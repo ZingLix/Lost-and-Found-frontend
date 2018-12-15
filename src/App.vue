@@ -32,7 +32,7 @@
                 <ul>
 
 
-<el-container v-for="item in items" :key="item.id" class="listitem">
+<el-container v-for="(item,index) in items" :key="item.id" class="listitem">
   <el-aside width="150px">
     <!--v-bind="{src:item.link}"-->
     <img class="img" src="./img/avatar.png"></el-aside>
@@ -40,11 +40,27 @@
     <el-header ><h1 class="name">{{item.item_name}}</h1></el-header>
     <el-main class="description"><div class="txt">{{ item.item_description }}</div>
     <div class="button">
-    <el-button v-if="item.status==0" style="color:#2c3e50" @click="noticeDialogVisible=true">认领</el-button>
+    <el-button v-if="item.status==0" style="color:#2c3e50" @click="askfor_click(index)">认领</el-button>
     <el-button v-else disabled>已认领</el-button>
     </div>
     </el-main>
   </el-container>
+  <el-dialog
+  title="公告信息"
+  :visible.sync="noticeDialogVisible"
+  width="30%"
+  center>
+  <div v-if="cur_item_id!=notice_infomation.item_id">
+    <i class="el-icon-loading"></i><div>获取物品信息中...</div>
+    </div><div v-else>
+  <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+  <div>物品名称：{{notice_infomation.item_name}}</div>
+  <div>物品描述：{{notice_infomation.item_info}}</div>
+  <div>丢失位置：{{notice_infomation.lost_location}}</div>
+  <div>发布时间：{{notice_infomation.time}}</div>
+      <el-button type="primary" @click="askfor(index)">认领</el-button>
+    <el-button @click="noticeDialogVisible=false">取消</el-button></div>
+</el-dialog>
 </el-container>
 
     
@@ -73,19 +89,7 @@
   </el-form>
 </el-dialog>
 
-<el-dialog
-  title="公告信息"
-  :visible.sync="noticeDialogVisible"
-  width="30%"
-  center>
-  <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
-  <div>物品名称：{{notice_infomation.item_name}}</div>
-  <div>物品描述：{{notice_infomation.item_info}}</div>
-  <div>丢失位置：{{notice_infomation.lost_location}}</div>
-  <div>发布时间：{{notice_infomation.time}}</div>
-      <el-button type="primary" @click="askfor">认领</el-button>
-    <el-button @click="noticeDialogVisible=false">取消</el-button>
-</el-dialog>
+
 
     </el-container>
 
@@ -240,8 +244,8 @@ body {
           label: 'label'
         },
         items: [
-      {notice_id:1, item_name: '手机', status: 1 },
-            {notice_id:2, item_name: '不知道啥玩意儿', status: 0 },
+      {notice_id:1, item_name: '手机', status: 1,item_id:0 },
+            {notice_id:2, item_name: '不知道啥玩意儿', status: 0,item_id:1 },
         ],
         ws: null,
         centerDialogVisible: false,
@@ -253,11 +257,13 @@ body {
         },
         user_id:0,
         notice_infomation:{
-          item_name:'手机',
+          item_name:'bzd',
           time:"2018-8-8",
           item_info:"xxxx",
-          lost_location:"食堂"
-        }
+          lost_location:"test",
+          item_id:0
+        },
+        cur_item_id:-1,
       }
     },
     created(){
@@ -268,6 +274,7 @@ body {
     },
     methods: {
       handleNodeClick(data) {
+        // eslint-disable-next-line
         console.log(data);
       },
       notification(msg){
@@ -277,7 +284,9 @@ body {
         });
       },
       initWS(){
-        this.ws=new WebSocket("ws://118.25.27.241:9981");
+        if(this.ws==null|| this.ws.readyState!=WebSocket.OPEN){
+          this.ws=new WebSocket("ws://118.25.27.241:9981");
+        }
         this.ws.onopen=this.ws_onopen;
         this.ws.onerror=this.ws_onerror;
         this.ws.onmessage=this.ws_onmessage;
@@ -303,7 +312,6 @@ body {
         this.$notify({
           title: '收到消息',
           message: e.data,
-          duration: 0
         });
         var result=JSON.parse(e.data)
         if(result.type == 1){
@@ -319,7 +327,18 @@ body {
             this.notification("登陆失败: "+result.content)
              this.$message.error(result.content);
           }
-        }else if(result.type==11){
+        }else if(result.type==3){
+          if(result.code==11){
+            this.cur_item_id=result.item_id
+            this.notice_information={}
+            this.notice_infomation["item_id"]=result.item_id
+            this.notice_infomation["item_name"]=result.item_name
+            this.notice_infomation["item_info"]=result.item_info
+            this.notice_infomation["lost_location"]=result.lost_location
+            this.notice_infomation["time"]="2018-8-8"
+          }
+        }
+        else if(result.type==11){
           if(result.code==12){
             this.items = []
             for(var i=0;i<result.notice_info.length;i++){
@@ -328,8 +347,15 @@ body {
               tmp["notice_id"]=obj[0]
               tmp["item_name"]=obj[1]
               tmp["status"]=obj[2]
+              tmp["item_id"]=obj[3]
               this.items.push(tmp)
             }
+          }else if(result.code==13){
+            this.$message({
+              message:'已发起申请',
+              type:'success'
+            });
+            this.noticeDialogVisible=false
           }
         }
       },
@@ -353,8 +379,24 @@ body {
           message: JSON.stringify(request,null,0),
           duration: 0
         });
-      },askfor(){
-        
+      },askfor(index){
+        var notice_id=this.items[index]["notice_id"]
+        var request={
+          'type':11,
+          'code':3,
+          'notice_id':notice_id
+        }
+        this.ws.send(JSON.stringify(request,null,0))
+      },askfor_click(index){
+        this.noticeDialogVisible=true
+        var tmp=this.items[index]
+        var request={
+          'type':3,
+          'code':1,
+          'item_id': tmp["item_id"]
+        }
+        this.ws.send(JSON.stringify(request,null,0))
+
       }
     }
 };
