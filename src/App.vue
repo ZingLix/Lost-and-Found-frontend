@@ -4,12 +4,24 @@
         <el-header class="header">
           <div class="title">失物招领</div>
           <div class="userinfo">
-            <span class="username">username</span>
-            <img src="./img/avatar.png" class="avatar">
+            <span class="username" >{{user_id}}</span>
+            <el-popover trigger="hover" width="50">
+            <div style= "text-align: center">
+
+  <el-button type="text" @click="centerDialogVisible = true" >
+    <div v-if="user_id==0">登陆</div><div v-else>注销</div>
+  </el-button>
+
+              
+            </div>
+            <img src="./img/avatar.png" class="avatar" slot="reference">
+            </el-popover>
           </div>
           <div class="search">
             <i class="el-icon-search"></i>
           </div>
+            <el-button @click="updateList" >更新列表
+  </el-button>
         </el-header>
         <el-main class="main">
           <el-row >
@@ -21,11 +33,16 @@
 
 
 <el-container v-for="item in items" :key="item.id" class="listitem">
-  <el-aside width="150px"><img v-bind="{src:item.link}"  class="img"></el-aside>
+  <el-aside width="150px">
+    <!--v-bind="{src:item.link}"-->
+    <img class="img" src="./img/avatar.png"></el-aside>
   <el-container>
     <el-header ><h1 class="name">{{item.item_name}}</h1></el-header>
-    <el-main class="description"><div class="txt">{{ item.item_description }}</div><el-button class="button">认领</el-button>
-
+    <el-main class="description"><div class="txt">{{ item.item_description }}</div>
+    <div class="button">
+    <el-button v-if="item.status==0" style="color:#2c3e50" @click="noticeDialogVisible=true">认领</el-button>
+    <el-button v-else disabled>已认领</el-button>
+    </div>
     </el-main>
   </el-container>
 </el-container>
@@ -36,6 +53,40 @@
             </el-col>
           </el-row>
         </el-main>
+
+<el-dialog
+  title="登陆"
+  :visible.sync="centerDialogVisible"
+  width="30%"
+  center>
+  <el-form ref="form" :model="form" label-width="80px">
+    <el-form-item label="用户名">
+      <el-input v-model="form.username"></el-input>
+    </el-form-item>
+    <el-form-item label="密码">
+      <el-input v-model="form.password"></el-input>
+    </el-form-item>
+    <el-form-item>
+    <el-button type="primary" @click="login">登陆</el-button>
+    <el-button @click="centerDialogVisible=false">取消</el-button>
+  </el-form-item>
+  </el-form>
+</el-dialog>
+
+<el-dialog
+  title="公告信息"
+  :visible.sync="noticeDialogVisible"
+  width="30%"
+  center>
+  <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+  <div>物品名称：{{notice_infomation.item_name}}</div>
+  <div>物品描述：{{notice_infomation.item_info}}</div>
+  <div>丢失位置：{{notice_infomation.lost_location}}</div>
+  <div>发布时间：{{notice_infomation.time}}</div>
+      <el-button type="primary" @click="askfor">认领</el-button>
+    <el-button @click="noticeDialogVisible=false">取消</el-button>
+</el-dialog>
+
     </el-container>
 
 </div>
@@ -143,9 +194,9 @@ body {
     float: left;
     color:#2c3e50;
   }
-    .container .main .list .description .button{
+  .container .main .list .description .button{
     float: right;;
-    color:#2c3e50;
+    
   }
 </style>
 <script >
@@ -189,21 +240,123 @@ body {
           label: 'label'
         },
         items: [
-      {id:1,link:"./img/avatar.3c2e934b.png", item_name: '手机',item_description:'111' },
-      {id:2,link:"./img/avatar.3c2e934b.png", item_name: '学生证',item_description:'222' }
-        ]
+      {notice_id:1, item_name: '手机', status: 1 },
+            {notice_id:2, item_name: '不知道啥玩意儿', status: 0 },
+        ],
+        ws: null,
+        centerDialogVisible: false,
+        noticeDialogVisible:false,
+        form: {
+          type:1,
+          username: '',
+          password: '',
+        },
+        user_id:0,
+        notice_infomation:{
+          item_name:'手机',
+          time:"2018-8-8",
+          item_info:"xxxx",
+          lost_location:"食堂"
+        }
       }
+    },
+    created(){
+      this.initWS();
+    },
+    destroyed:function(){
+      this.closeWS();
     },
     methods: {
       handleNodeClick(data) {
         console.log(data);
+      },
+      notification(msg){
+          this.$notify({
+          title: '消息',
+          message: msg,
+        });
+      },
+      initWS(){
+        this.ws=new WebSocket("ws://118.25.27.241:9981");
+        this.ws.onopen=this.ws_onopen;
+        this.ws.onerror=this.ws_onerror;
+        this.ws.onmessage=this.ws_onmessage;
+        this.ws.onclose=this.ws_onclose;
+      },
+      closeWS(){
+        this.ws_onclose();
+      },
+      ws_onopen(){
+        this.$notify({
+          title: '成功',
+          message: '连接已建立',
+          type:'success'
+        });
+      },
+      ws_onerror(){
+        this.$notify.error({
+          title: '错误',
+          message: '连接发生错误',
+        });
+      },
+      ws_onmessage(e){
+        this.$notify({
+          title: '收到消息',
+          message: e.data,
+          duration: 0
+        });
+        var result=JSON.parse(e.data)
+        if(result.type == 1){
+          if(result.code == 1) {
+            this.notification("登陆成功: user_id "+result.user_id)
+            this.centerDialogVisible=false
+            this.user_id=result.user_id
+            this.$message({
+          message: '登陆成功',
+          type: 'success'
+        });
+          }else{
+            this.notification("登陆失败: "+result.content)
+             this.$message.error(result.content);
+          }
+        }else if(result.type==11){
+          if(result.code==12){
+            this.items = []
+            for(var i=0;i<result.notice_info.length;i++){
+              var obj=result.notice_info[i]
+              var tmp={}
+              tmp["notice_id"]=obj[0]
+              tmp["item_name"]=obj[1]
+              tmp["status"]=obj[2]
+              this.items.push(tmp)
+            }
+          }
+        }
+      },
+      ws_onclose(){
+        this.$notify.error({
+          title: '错误',
+          message: '连接关闭',
+        });
+      },login(){
+        var content = JSON.stringify(this.form,null,0)
+        this.ws.send(content)
+        this.$notify({
+          title: '发送消息',
+          message: content,
+        });
+      },updateList(){
+        var request={'type':11, 'code':2,};
+        this.ws.send(JSON.stringify(request,null,0))
+        this.$notify({
+          title: '发送消息',
+          message: JSON.stringify(request,null,0),
+          duration: 0
+        });
+      },askfor(){
+        
       }
     }
 };
-var ws = new WebSocket("ws://118.25.27.241:9981");
-console.log(ws.readyState); 
-ws.onopen = function(evt) { 
-  console.log("Connection open ..."); 
-  ws.send("Hello WebSockets!");
-};
+
 </script>
