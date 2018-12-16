@@ -2,37 +2,51 @@
 <div id="app">
     <el-container class="container">
         <el-header class="header">
+
           <div class="title">失物招领</div>
+         
+          <el-menu
+  :default-active="activeIndex"
+  class="el-menu-demo menu"
+  mode="horizontal"
+  @select="handleSelect"
+  background-color="#545c64"
+  text-color="#fff"
+  active-text-color="#ffd04b" 
+  >
+  <el-menu-item index="1">首页</el-menu-item>
+  <el-menu-item index="2">申请列表</el-menu-item>
+
+</el-menu>
+
+
           <div class="userinfo">
             <span class="username" >{{user_id}}</span>
             <el-popover trigger="hover" width="50">
             <div style= "text-align: center">
-
   <el-button type="text" @click="centerDialogVisible = true" >
     <div v-if="user_id==0">登陆</div><div v-else>注销</div>
   </el-button>
-
-              
             </div>
             <img src="./img/avatar.png" class="avatar" slot="reference">
             </el-popover>
           </div>
+
           <div class="search">
             <i class="el-icon-search"></i>
           </div>
-            <el-button @click="updateList" >更新列表
-  </el-button>
-        </el-header>
-        <el-main class="main">
-          <el-row >
 
+      </el-header>
+        <el-main class="main" v-if="activeIndex==1">
+          <el-row >
             <el-col :span="6"><div class="nav"><el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree></div></el-col>
             <el-col :span="18">
               <div class="list">
                 <ul>
 
 
-<el-container v-for="(item,index) in items" :key="item.id" class="listitem">
+  <div v-if="items.length">
+<el-container v-for="(item,index) in items" :key="item.id" class="listitem" >
   <el-aside width="150px">
     <!--v-bind="{src:item.link}"-->
     <img class="img" src="./img/avatar.png"></el-aside>
@@ -62,13 +76,14 @@
     <el-button @click="noticeDialogVisible=false">取消</el-button></div>
 </el-dialog>
 </el-container>
-
+  </div><div v-else><el-button @click="updateList" >更新列表
+  </el-button></div>
     
 </ul>
               </div>
             </el-col>
           </el-row>
-        </el-main>
+        </el-main><el-main v-else-if="activeIndex==2" class="main"></el-main>
 
 <el-dialog
   title="登陆"
@@ -112,31 +127,37 @@ body {
  }
 
   .container .header{
-    background: #fff;
+    background: #545c64;
     line-height: 60px;
     height: 60px;
     padding: 0px;
   }
   .container .header .title{
       float: left;
-      color: rgb(0, 140, 255);
+      color: #ffffff;
       font-size: 22px;
       height: 60px;
       width: 230px;
-          border-right-width: 1px;
+          border-right-width: 2px;
     border-right-style: solid;
     border-color: #e6fffd;
   }
+    .container .header .menu{
+      float: left;
+      height: 60px;
+      width: auto;
+      margin-left: 20px;
+  }
     .container .header .search{
       float: right;
-      color: rgb(0, 0, 0);
+      color: #ffffff;
       font-size: 22px;
       height: 60px;
       padding-right: 20px;
   }
     .container .header .userinfo{
       float: right;
-      color: rgb(0, 0, 0);
+      color: #ffffff;
       font-size: 22px;
       height: 60px;
       padding-right: 20px;
@@ -159,7 +180,7 @@ body {
 
   .container .main{
         padding: 0 0 0 0 ;
-
+        margin-top: 30px;
   }
   .container .main .nav{
     width: 100%;
@@ -244,8 +265,8 @@ body {
           label: 'label'
         },
         items: [
-      {notice_id:1, item_name: '手机', status: 1,item_id:0 },
-            {notice_id:2, item_name: '不知道啥玩意儿', status: 0,item_id:1 },
+      //{notice_id:1, item_name: '手机', status: 1,item_id:0 },
+      //      {notice_id:2, item_name: '不知道啥玩意儿', status: 0,item_id:1 },
         ],
         ws: null,
         centerDialogVisible: false,
@@ -264,8 +285,10 @@ body {
           item_id:0
         },
         cur_item_id:-1,
+        activeIndex: '1'
       }
     },
+    
     created(){
       this.initWS();
     },
@@ -276,6 +299,8 @@ body {
       handleNodeClick(data) {
         // eslint-disable-next-line
         console.log(data);
+      },handleSelect(key) {
+        this.activeIndex=key;
       },
       notification(msg){
           this.$notify({
