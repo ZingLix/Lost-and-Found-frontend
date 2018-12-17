@@ -21,6 +21,7 @@
 
 
           <div class="userinfo">
+            
             <span class="username" >{{user_id}}</span>
             <el-popover trigger="hover" width="50">
             <div style= "text-align: center">
@@ -34,8 +35,28 @@
 
           <div class="search">
             <i class="el-icon-search"></i>
+            
           </div>
-
+<el-button type="primary" style="float: right;padding:22px;margin-right :20px" @click="addnoticeDialogVisible=true">添加公告</el-button>
+ <el-dialog
+  title="添加公告"
+  :visible.sync="addnoticeDialogVisible"
+  width="30%"
+  center>
+    <el-form ref="form" :model="add_notice_info" label-width="80px">
+  <el-form-item label="物品名称">
+    <el-input v-model="add_notice_info.item_name"></el-input>
+  </el-form-item>
+    <el-form-item label="物品描述">
+    <el-input v-model="add_notice_info.item_info"></el-input>
+  </el-form-item>
+    <el-form-item label="丢失位置">
+    <el-input v-model="add_notice_info.lost_location"></el-input>
+  </el-form-item>
+      <el-button type="primary" @click="add_notice">提交</el-button>
+    <el-button @click="centerDialogVisible=false">取消</el-button>
+    </el-form>
+</el-dialog>
       </el-header>
         <el-main class="main" v-if="activeIndex==1">
           <el-row >
@@ -75,6 +96,7 @@
       <el-button type="primary" @click="askfor(index)">认领</el-button>
     <el-button @click="noticeDialogVisible=false">取消</el-button></div>
 </el-dialog>
+ 
 </el-container>
   </div><div v-else><el-button @click="updateList" >更新列表
   </el-button></div>
@@ -83,7 +105,59 @@
               </div>
             </el-col>
           </el-row>
-        </el-main><el-main v-else-if="activeIndex==2" class="main"></el-main>
+        </el-main><el-main v-else-if="activeIndex==2" class="main">
+          <el-row >
+            <el-col :span="6"><div class="nav"><el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree></div></el-col>
+            <el-col :span="18">
+              <div class="list">
+                <ul>
+
+
+  <div v-if="application.length">
+<el-container v-for="(item,index) in application" :key="item.id" class="listitem" >
+  <el-aside width="150px">
+    <!--v-bind="{src:item.link}"-->
+    <img class="img" src="./img/avatar.png"></el-aside>
+  <el-container>
+    <el-header ><h1 class="name">{{item.item_name}}</h1></el-header>
+    <el-main class="description">
+      <div class="txt" v-if="item.status==0">申请中...</div>
+      <div class="txt" v-else-if="item.status==1">已接受</div>
+      <div class="txt" v-else-if="item.status==2">被拒绝</div>
+      <div class="txt" v-else-if="item.status==3">公告被取消</div>
+      <div class="txt" v-else-if="item.status==4">申请已过期</div>
+    <div class="button">
+    <el-button @click="application_click(index)">查看</el-button>
+    </div>
+    </el-main>
+  </el-container>
+  <el-dialog
+  title="公告信息"
+  :visible.sync="applicationDialogVisible"
+  width="30%"
+  center>
+  <div v-if="cur_item_id!=notice_infomation.item_id">
+    <i class="el-icon-loading"></i><div>获取物品信息中...</div>
+    </div><div v-else>
+  <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+  <div>物品名称：{{notice_infomation.item_name}}</div>
+  <div>物品描述：{{notice_infomation.item_info}}</div>
+  <div>丢失位置：{{notice_infomation.lost_location}}</div>
+  <div>发布时间：{{notice_infomation.time}}</div>
+      <el-button type="primary" @click="askfor(index)">认领</el-button>
+    <el-button @click="noticeDialogVisible=false">取消</el-button></div>
+</el-dialog>
+</el-container>
+  </div><div v-else><el-button @click="updateList" >更新列表
+  </el-button></div>
+    
+</ul>
+              </div>
+            </el-col>
+          </el-row>
+
+
+        </el-main>
 
 <el-dialog
   title="登陆"
@@ -252,7 +326,7 @@ body {
               label: '2 号线'
             }]
           }]
-        }, {
+        },{
           label: '时间',
           children: [{
             label: '一周内',
@@ -268,9 +342,14 @@ body {
       //{notice_id:1, item_name: '手机', status: 1,item_id:0 },
       //      {notice_id:2, item_name: '不知道啥玩意儿', status: 0,item_id:1 },
         ],
+        application:[
+          {application_seq:0,applicant_id:1,notice_id:2,status:0,item_id:2,item_name:"asdf"}
+        ],
         ws: null,
         centerDialogVisible: false,
         noticeDialogVisible:false,
+        applicationDialogVisible: false,
+        addnoticeDialogVisible:false,
         form: {
           type:1,
           username: '',
@@ -283,8 +362,13 @@ body {
           item_info:"xxxx",
           lost_location:"test",
           item_id:0
+        },add_notice_info:{
+          item_name:'',
+          item_info:'',
+          lost_location:''
         },
         cur_item_id:-1,
+        cur_application_id:-1,
         activeIndex: '1'
       }
     },
@@ -306,6 +390,7 @@ body {
           this.$notify({
           title: '消息',
           message: msg,
+          offset: 100
         });
       },
       initWS(){
@@ -324,13 +409,15 @@ body {
         this.$notify({
           title: '成功',
           message: '连接已建立',
-          type:'success'
+          type:'success',
+          offset: 100
         });
       },
       ws_onerror(){
         this.$notify.error({
           title: '错误',
           message: '连接发生错误',
+          offset: 100
         });
       },
       ws_onmessage(e){
@@ -364,7 +451,13 @@ body {
           }
         }
         else if(result.type==11){
-          if(result.code==12){
+          if(result.code==11){
+            this.addnoticeDialogVisible=false
+            this.$message({
+          message: '发布成功',
+          type: 'success',
+            });
+          }else if(result.code==12){
             this.items = []
             for(var i=0;i<result.notice_info.length;i++){
               var obj=result.notice_info[i]
@@ -378,7 +471,8 @@ body {
           }else if(result.code==13){
             this.$message({
               message:'已发起申请',
-              type:'success'
+              type:'success',
+              offset: 100
             });
             this.noticeDialogVisible=false
           }
@@ -388,6 +482,7 @@ body {
         this.$notify.error({
           title: '错误',
           message: '连接关闭',
+          offset: 100
         });
       },login(){
         var content = JSON.stringify(this.form,null,0)
@@ -395,6 +490,7 @@ body {
         this.$notify({
           title: '发送消息',
           message: content,
+          offset: 100
         });
       },updateList(){
         var request={'type':11, 'code':2,};
@@ -402,7 +498,7 @@ body {
         this.$notify({
           title: '发送消息',
           message: JSON.stringify(request,null,0),
-          duration: 0
+          offset: 100
         });
       },askfor(index){
         var notice_id=this.items[index]["notice_id"]
@@ -421,7 +517,24 @@ body {
           'item_id': tmp["item_id"]
         }
         this.ws.send(JSON.stringify(request,null,0))
-
+      },application_click(index){
+        this.applicationDialogVisible=true
+        var tmp=this.application[index]
+        var request={
+          'type':3,
+          'code':4,
+          'notice_id': tmp["item_id"]
+        }
+        this.ws.send(JSON.stringify(request,null,0))
+      },add_notice(){
+        var request={
+    'type':11,
+    'code':1,
+    'item_name':this.add_notice_info.item_name,
+    'item_info':this.add_notice_info.item_info,
+    'lost_location':this.add_notice_info.lost_location
+        }
+        this.ws.send(JSON.stringify(request,null,0))
       }
     }
 };
