@@ -22,7 +22,7 @@
           <span class="username">{{user_id}}</span>
           <el-popover trigger="hover" width="50">
             <div style="text-align: center">
-              <el-button type="text" @click="centerDialogVisible = true">
+              <el-button type="text" @click="loginDialogVisible = true">
                 <div v-if="user_id==0">登陆</div>
                 <div v-else>注销</div>
               </el-button>
@@ -39,21 +39,6 @@
           style="float: right;padding:22px;margin-right :20px"
           @click="addnoticeDialogVisible=true"
         >添加公告</el-button>
-        <el-dialog title="添加公告" :visible.sync="addnoticeDialogVisible" width="30%" center>
-          <el-form ref="form" :model="add_notice_info" label-width="80px">
-            <el-form-item label="物品名称">
-              <el-input v-model="add_notice_info.item_name"></el-input>
-            </el-form-item>
-            <el-form-item label="物品描述">
-              <el-input v-model="add_notice_info.item_info"></el-input>
-            </el-form-item>
-            <el-form-item label="丢失位置">
-              <el-input v-model="add_notice_info.lost_location"></el-input>
-            </el-form-item>
-            <el-button type="primary" @click="add_notice">提交</el-button>
-            <el-button @click="addnoticeDialogVisible=false">取消</el-button>
-          </el-form>
-        </el-dialog>
       </el-header>
 
       <el-main class="main" v-if="activeIndex==1">
@@ -66,32 +51,43 @@
           <el-col :span="18">
             <div class="list">
               <ul>
-                <div v-if="notice.length">
-                  <el-container v-for="(item,index) in notice" :key="item.id" class="listitem">
+                <div v-if="notice_list.length">
+                  <el-container
+                    v-for="(notice_id,index) in notice_list"
+                    :key="notice_id"
+                    class="listitem"
+                  >
                     <el-aside width="150px">
-                      <!--v-bind="{src:item.link}"-->
                       <img class="img" src="./img/avatar.png">
                     </el-aside>
-                    <el-container>
+                    <el-container
+                      v-loading="(notice[notice_id]=={})||(item[notice[notice_id].item_id]=={})"
+                    >
                       <el-header>
-                        <h1 class="name">{{item.item_name}}</h1>
+                        <h1 class="name">{{item[notice[notice_id].item_id].item_name}}</h1>
                       </el-header>
                       <el-main class="description">
-                        <div class="txt">{{ item.item_description }}</div>
+                        <div class="txt">{{item[notice[notice_id].item_id].item_info }}描述</div>
                         <div class="button">
                           <el-button
-                            v-if="item.status==0"
+                            v-if="notice[notice_id].status==0"
                             style="color:#2c3e50"
-                            @click="askfor_click(index)"
+                            @click="notice_dialog_open(index)"
                           >认领</el-button>
-                          <el-button v-else disabled>已认领</el-button>
+                          <el-button v-else-if="notice[notice_id].status==1" disabled>已认领</el-button>
+                          <el-button v-else-if="notice[notice_id].status==3" disabled>被取消</el-button>
+                          <el-button v-else-if="notice[notice_id].status==4" disabled>过期</el-button>
+                          <el-button v-else disabled>未知状态</el-button>
                         </div>
                       </el-main>
                     </el-container>
+                    <!-- <el-container v-else>
+                      <div v-loading="true"></div>
+                    </el-container>-->
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateList">更新列表</el-button>
+                  <el-button @click="updateNoticeList">更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -108,53 +104,34 @@
           <el-col :span="18">
             <div class="list">
               <ul>
-                <div v-if="application.length">
-                  <el-container v-for="(item,index) in application" :key="item.id" class="listitem">
+                <div v-if="my_notice_list.length">
+                  <el-container
+                    v-for="(notice_id,index) in my_notice_list"
+                    :key="notice_id"
+                    class="listitem"
+                  >
                     <el-aside width="150px">
-                      <!--v-bind="{src:item.link}"-->
                       <img class="img" src="./img/avatar.png">
                     </el-aside>
                     <el-container>
                       <el-header>
-                        <h1 class="name">{{item.item_name}}</h1>
+                        <h1 class="name">{{item[notice[notice_id].item_id].item_name}}</h1>
                       </el-header>
                       <el-main class="description">
-                        <div class="txt" v-if="item.status==0">申请中...</div>
-                        <div class="txt" v-else-if="item.status==1">已接受</div>
-                        <div class="txt" v-else-if="item.status==2">被拒绝</div>
-                        <div class="txt" v-else-if="item.status==3">公告被取消</div>
-                        <div class="txt" v-else-if="item.status==4">申请已过期</div>
-                        <div class="txt" v-if="user_id==item.applicant_id">申请的</div>
-                        <div class="txt" v-else>发起的</div>
+                        <div class="txt" v-if="notice[notice_id].status==0">申请中...</div>
+                        <div class="txt" v-else-if="notice[notice_id].status==1">已接受</div>
+                        <div class="txt" v-else-if="notice[notice_id].status==3">公告被取消</div>
+                        <div class="txt" v-else-if="notice[notice_id].status==4">申请已过期</div>
+                        <div class="txt" v-else>未知状态</div>
                         <div class="button">
-                          <el-button @click="application_click(index)">查看</el-button>
+                          <el-button @click="my_notice_dialog_open(index)">查看</el-button>
                         </div>
                       </el-main>
                     </el-container>
-                    <el-dialog
-                      title="申请信息"
-                      :visible.sync="applicationDialogVisible"
-                      width="30%"
-                      center
-                    >
-                      <div v-if="cur_item_id!=notice_infomation.item_id">
-                        <i class="el-icon-loading"></i>
-                        <div>获取申请信息中...</div>
-                      </div>
-                      <div v-else>
-                        <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
-                        <div>物品名称：{{notice_infomation.item_name}}</div>
-                        <div>物品描述：{{notice_infomation.item_info}}</div>
-                        <div>丢失位置：{{notice_infomation.lost_location}}</div>
-                        <div>发布时间：{{notice_infomation.time}}</div>
-                        <el-button type="primary" @click="askfor(index)">xxx</el-button>
-                        <el-button @click="applicationDialogVisible=false">取消</el-button>
-                      </div>
-                    </el-dialog>
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateApplication">更新列表</el-button>
+                  <el-button @click="updateMyNoticeList">更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -171,53 +148,36 @@
           <el-col :span="18">
             <div class="list">
               <ul>
-                <div v-if="claim.length">
-                  <el-container v-for="(item,index) in claim" :key="item.id" class="listitem">
+                <div v-if="my_application_list.length">
+                  <el-container
+                    v-for="(app_seq,index) in my_application_list"
+                    :key="app_seq"
+                    class="listitem"
+                  >
                     <el-aside width="150px">
-                      <!--v-bind="{src:item.link}"-->
                       <img class="img" src="./img/avatar.png">
                     </el-aside>
                     <el-container>
                       <el-header>
-                        <h1 class="name">{{item.item_name}}</h1>
+                        <h1
+                          class="name"
+                        >{{item[notice[application[app_seq].notice_id].item_id].item_name}}</h1>
                       </el-header>
                       <el-main class="description">
-                        <div class="txt" v-if="item.status==0">申请中...</div>
-                        <div class="txt" v-else-if="item.status==1">已接受</div>
-                        <div class="txt" v-else-if="item.status==2">被拒绝</div>
-                        <div class="txt" v-else-if="item.status==3">公告被取消</div>
-                        <div class="txt" v-else-if="item.status==4">申请已过期</div>
-                        <div class="txt" v-if="user_id==item.applicant_id">申请的</div>
-                        <div class="txt" v-else>发起的</div>
+                        <div class="txt" v-if="application[app_seq].status==0">申请中...</div>
+                        <div class="txt" v-else-if="application[app_seq].status==1">已接受</div>
+                        <div class="txt" v-else-if="application[app_seq].status==2">被拒绝</div>
+                        <div class="txt" v-else-if="application[app_seq].status==3">公告被取消</div>
+                        <div class="txt" v-else-if="application[app_seq].status==4">申请已过期</div>
                         <div class="button">
-                          <el-button @click="claimDialogVisible=true">查看</el-button>
+                          <el-button @click="my_applicationDialogVisible=true">查看</el-button>
                         </div>
                       </el-main>
                     </el-container>
-                    <el-dialog title="认领信息" :visible.sync="claimDialogVisible" width="30%" center>
-                      <div v-if="cur_claim_id!=claim.item_id">
-                        <i class="el-icon-loading"></i>
-                        <div>获取认领信息中...</div>
-                      </div>
-                      <div v-else>
-                        <el-steps :space="200" :active="1" finish-status="success">
-                          <el-step title="已完成"></el-step>
-                          <el-step title="进行中"></el-step>
-                          <el-step title="步骤 3"></el-step>
-                        </el-steps>
-                        <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
-                        <div>物品名称：{{notice_infomation.item_name}}</div>
-                        <div>物品描述：{{notice_infomation.item_info}}</div>
-                        <div>丢失位置：{{notice_infomation.lost_location}}</div>
-                        <div>发布时间：{{notice_infomation.time}}</div>
-                        <el-button type="primary" @click="askfor(index)">xxx</el-button>
-                        <el-button @click="claimDialogVisible=false">取消</el-button>
-                      </div>
-                    </el-dialog>
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateApplication">更新列表</el-button>
+                  <el-button @click="updateApplicationList">更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -225,19 +185,85 @@
         </el-row>
       </el-main>
 
-      <el-dialog title="登陆" :visible.sync="centerDialogVisible" width="30%" center>
-        <el-form ref="form" :model="form" label-width="80px">
+      <el-dialog title="登陆" :visible.sync="loginDialogVisible" width="30%" center>
+        <el-form ref="form" :model="login_form" label-width="80px">
           <el-form-item label="用户名">
-            <el-input v-model="form.username"></el-input>
+            <el-input v-model="login_form.username"></el-input>
           </el-form-item>
           <el-form-item label="密码">
-            <el-input v-model="form.password"></el-input>
+            <el-input v-model="login_form.password"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="login">登陆</el-button>
-            <el-button @click="centerDialogVisible=false">取消</el-button>
+            <el-button @click="loginDialogVisible=false">取消</el-button>
           </el-form-item>
         </el-form>
+      </el-dialog>
+
+      <el-dialog title="添加公告" :visible.sync="addnoticeDialogVisible" width="30%" center>
+        <el-form ref="form" :model="add_notice_form" label-width="80px">
+          <el-form-item label="物品名称">
+            <el-input v-model="add_notice_form.item_name"></el-input>
+          </el-form-item>
+          <el-form-item label="物品描述">
+            <el-input v-model="add_notice_form.item_info"></el-input>
+          </el-form-item>
+          <el-form-item label="丢失位置">
+            <el-input v-model="add_notice_form.lost_location"></el-input>
+          </el-form-item>
+          <el-button type="primary" @click="add_notice">提交</el-button>
+          <el-button @click="addnoticeDialogVisible=false">取消</el-button>
+        </el-form>
+      </el-dialog>
+
+      <el-dialog title="公告信息" :visible.sync="noticeDialogVisible" width="30%" center>
+        <div
+          v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
+          element-loading-text="获取申请信息中..."
+        >
+          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <div>物品名称：{{item[notice[cur_notice_id].item_id].item_name}}</div>
+          <div>物品描述：{{item[notice[cur_notice_id].item_id].item_info}}</div>
+          <div>丢失位置：{{item[notice[cur_notice_id].item_id].lost_location}}</div>
+          <div>发布时间：{{notice[cur_notice_id].time}}</div>
+          <el-button type="primary" @click="claim(index)">认领</el-button>
+          <el-button @click="noticeDialogVisible=false">取消</el-button>
+        </div>
+      </el-dialog>
+
+      <el-dialog title="申请信息" :visible.sync="my_noticeDialogVisible" width="30%" center>
+        <div
+          v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
+          element-loading-text="获取申请信息中..."
+        >
+          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <div>物品名称：{{item[notice[cur_my_notice_id].item_id].item_name}}</div>
+          <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
+          <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
+          <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
+          <el-button type="primary" @click="claim(index)">xxx</el-button>
+          <el-button @click="my_noticeDialogVisible=false">取消</el-button>
+        </div>
+      </el-dialog>
+
+      <el-dialog title="认领信息" :visible.sync="my_applicationDialogVisible" width="30%" center>
+        <div
+          v-loading="!item.hasOwnProperty(notice[application[cur_my_application_id].notice_id].item_id)"
+          element-loading-text="获取认领信息中..."
+        >
+          <el-steps :space="200" :active="1" finish-status="success">
+            <el-step title="已完成"></el-step>
+            <el-step title="进行中"></el-step>
+            <el-step title="步骤 3"></el-step>
+          </el-steps>
+          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <div>物品名称：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_name}}</div>
+          <div>物品描述：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_info}}</div>
+          <div>丢失位置：{{item[notice[application[cur_my_application_id].notice_id].item_id].lost_location}}</div>
+          <div>发布时间：{{notice[application[cur_my_application_id].notice_id].time}}</div>
+          <el-button type="primary" @click="askfor(index)">xxx</el-button>
+          <el-button @click="my_applicationDialogVisible=false">取消</el-button>
+        </div>
       </el-dialog>
     </el-container>
   </div>
@@ -407,58 +433,53 @@ export default {
         children: "children",
         label: "label"
       },
-      notice: [
-        { notice_id: 1, item_name: "手机", status: 0, item_id: 0 }
-        //      {notice_id:2, item_name: '不知道啥玩意儿', status: 0,item_id:1 },
-      ],
-      application: [
-        {
-          application_seq: 0,
-          applicant_id: 1,
-          notice_id: 2,
+      notice: {
+        1: {
+          finder_id: 2,
           status: 0,
-          item_id: 2,
-          item_name: "asdf"
+          item_id: 1,
+          contact_id: 2,
+          time: "2018-8-8"
         }
-      ],
-      claim: [
-        {
-          application_seq: 0,
+      },
+      application: {
+        1: {
           applicant_id: 1,
-          notice_id: 2,
-          status: 0,
-          item_id: 2,
-          item_name: "hrth"
+          notice_id: 1,
+          status: 0
         }
-      ],
+      },
+      item: {
+        1: {
+          item_info: "xx23",
+          item_name: "手机",
+          lost_location: "食堂"
+        }
+      },
+      notice_list: [1], //notice_id
+      my_notice_list: [1],
+      my_application_list: [1],
       ws: null,
-      centerDialogVisible: false,
+      user_id: 0,
       noticeDialogVisible: false,
-      applicationDialogVisible: false,
+      my_noticeDialogVisible: false,
+      my_applicationDialogVisible: false,
       addnoticeDialogVisible: false,
-      claimDialogVisible: false,
-      form: {
+      loginDialogVisible: false,
+      login_form: {
         type: 1,
         username: "",
         password: ""
       },
-      user_id: 0,
-      notice_infomation: {
-        item_name: "bzd",
-        time: "2018-8-8",
-        item_info: "xxxx",
-        lost_location: "test",
-        item_id: 0
-      },
-      add_notice_info: {
+      add_notice_form: {
         item_name: "",
         item_info: "",
         lost_location: ""
       },
-      cur_item_id: -1,
-      cur_application_id: -1,
-      cur_notice_id: -1,
-      activeIndex: "1"
+      activeIndex: "1",
+      cur_notice_id: 1,
+      cur_my_notice_id: 1,
+      cur_my_application_id: 1
     };
   },
 
@@ -476,15 +497,18 @@ export default {
     handleSelect(key) {
       this.activeIndex = key;
       if (key == 1) {
-        this.updateList();
+        this.updateNoticeList();
       } else if (key == 2) {
-        this.updateApplication();
+        this.updateMyNoticeList();
+      } else if (key == 3) {
+        this.updateApplicationList();
       }
     },
-    notification(msg) {
+    notification(msg, title = "消息", type = "info") {
       this.$notify({
-        title: "消息",
+        title: title,
         message: msg,
+        type: type,
         offset: 100
       });
     },
@@ -501,30 +525,18 @@ export default {
       this.ws_onclose();
     },
     ws_onopen() {
-      this.$notify({
-        title: "成功",
-        message: "连接已建立",
-        type: "success",
-        offset: 100
-      });
+      this.notification("连接已建立", "成功", "success");
     },
     ws_onerror() {
-      this.$notify.error({
-        title: "错误",
-        message: "连接发生错误",
-        offset: 100
-      });
+      this.notification("连接发生错误", "错误", "error");
     },
     ws_onmessage(e) {
-      this.$notify({
-        title: "收到消息",
-        message: e.data
-      });
+      this.notification(e.data, "收到消息");
       var result = JSON.parse(e.data);
       if (result.type == 1) {
         if (result.code == 1) {
           this.notification("登陆成功: user_id " + result.user_id);
-          this.centerDialogVisible = false;
+          this.loginDialogVisible = false;
           this.user_id = result.user_id;
           this.$message({
             message: "登陆成功",
@@ -536,13 +548,13 @@ export default {
         }
       } else if (result.type == 3) {
         if (result.code == 11) {
-          this.cur_item_id = result.item_id;
-          this.notice_information = {};
-          this.notice_infomation["item_id"] = result.item_id;
-          this.notice_infomation["item_name"] = result.item_name;
-          this.notice_infomation["item_info"] = result.item_info;
-          this.notice_infomation["lost_location"] = result.lost_location;
-          this.notice_infomation["time"] = "2018-8-8";
+          var tmp = {};
+          var id = result.item_id;
+          tmp["item_name"] = result.item_name;
+          tmp["item_info"] = result.item_info;
+          tmp["lost_location"] = result.lost_location;
+          this.$set(this.item, id, tmp);
+          // this.item[id] = tmp;
         }
       } else if (result.type == 11) {
         if (result.code == 11) {
@@ -552,112 +564,149 @@ export default {
             type: "success"
           });
         } else if (result.code == 12) {
-          this.notice = [];
+          this.notice_list = [];
           for (var i1 = 0; i1 < result.notice_info.length; i1++) {
             var obj1 = result.notice_info[i1];
             var tmp1 = {};
-            tmp1["notice_id"] = obj1[0];
-            tmp1["item_name"] = obj1[1];
+            var notice_id = obj1[0];
+            tmp1["finder_id"] = obj1[1];
             tmp1["status"] = obj1[2];
             tmp1["item_id"] = obj1[3];
-            this.notice.push(tmp1);
+            tmp1["contact_id"] = obj1[4];
+            tmp1["time"] = obj1[5];
+            this.notice_list.push(notice_id);
+            this.$set(this.notice, notice_id, tmp1);
+            //this.notice[notice_id] = tmp1;
+            if (!this.item.hasOwnProperty(obj1[3])) this.get_item_info(obj1[3]);
           }
         } else if (result.code == 13) {
           this.$message({
             message: "已发起申请",
-            type: "success",
-            offset: 100
+            type: "success"
           });
           this.noticeDialogVisible = false;
         } else if (result.code == 14) {
-          this.application = [];
+          this.application = {};
+          my_application_list = [];
           for (var i = 0; i < result.application_info.length; i++) {
             var obj = result.application_info[i];
             var tmp = {};
-            tmp["application_seq"] = obj[0];
+            var app_seq = obj[0];
             tmp["applicant_id"] = obj[1];
             tmp["notice_id"] = obj[2];
             tmp["status"] = obj[3];
             tmp["item_id"] = obj[4];
             tmp["item_name"] = obj[5];
-            this.application.push(tmp);
+            this.$set(this.my_application, app_seq, tmp);
+            //this.my_application[app_seq] = tmp;
+            my_application_list.push(app_seq);
+            if (!notice.hasOwnProperty(obj[2])) get_notice_info(obj[2]);
+            if (!item.hasOwnProperty(obj[4])) get_item_info(obj[4]);
           }
+        } else if (result.code == 19) {
+          var obj1 = result.notice_info;
+          var tmp1 = {};
+          var notice_id = obj1[0];
+          tmp1["finder_id"] = obj1[1];
+          tmp1["status"] = obj1[2];
+          tmp1["item_id"] = obj1[3];
+          tmp1["contact_id"] = obj1[4];
+          tmp1["time"] = obj1[5];
+          this.$set(this.item, notice_id, tmp1);
+          // this.item[notice_id] = tmp1;
         }
       }
     },
     ws_onclose() {
-      this.$notify.error({
-        title: "错误",
-        message: "连接关闭",
-        offset: 100
-      });
+      this.notification("连接关闭", "错误", "error");
     },
     login() {
-      var content = JSON.stringify(this.form, null, 0);
+      var content = JSON.stringify(this.login_form, null, 0);
       this.ws.send(content);
-      this.$notify({
-        title: "发送消息",
-        message: content,
-        offset: 100
-      });
+      this.notification(content, "发送消息");
     },
-    updateList() {
+    updateNoticeList() {
       var request = { type: 11, code: 2 };
-      this.ws.send(JSON.stringify(request, null, 0));
-      this.$notify({
-        title: "发送消息",
-        message: JSON.stringify(request, null, 0),
-        offset: 100
-      });
+      this.send_msg(request);
     },
-    updateApplication() {
+    updateMyNoticeList() {
+      var request = { type: 11, code: 2 };
+      this.send_msg(request);
+    },
+    updateApplicationList() {
       var request = { type: 11, code: 4 };
-      this.ws.send(JSON.stringify(request, null, 0));
-      this.$notify({
-        title: "发送消息",
-        message: JSON.stringify(request, null, 0),
-        offset: 100
-      });
+      this.send_msg(request);
     },
-    askfor() {
+    claim() {
       var request = {
         type: 11,
         code: 3,
         notice_id: this.cur_notice_id
       };
-      this.ws.send(JSON.stringify(request, null, 0));
+      this.send_msg(request);
     },
-    askfor_click(index) {
+    notice_dialog_open(index) {
       this.noticeDialogVisible = true;
-      var tmp = this.notice[index];
-      console.log(index);
-      this.cur_notice_id = tmp["notice_id"];
+      var notice_id = this.notice_list[index];
+      var tmp = this.notice[notice_id];
+      this.cur_notice_id = notice_id;
       var request = {
         type: 3,
         code: 1,
         item_id: tmp["item_id"]
       };
-      this.ws.send(JSON.stringify(request, null, 0));
+      this.send_msg(request);
     },
-    application_click(index) {
-      this.applicationDialogVisible = true;
-      var tmp = this.application[index];
+    my_notice_dialog_open(index) {
+      this.my_noticeDialogVisible = true;
+      var notice_id = this.my_notice_list[index];
+      var tmp = this.notice[notice_id];
+      this.cur_my_notice_id = notice_id;
       var request = {
         type: 3,
         code: 1,
         item_id: tmp["item_id"]
       };
-      this.ws.send(JSON.stringify(request, null, 0));
+      this.send_msg(request);
+    },
+    my_application_dialog_open(index) {
+      this.applicationDialogVisible = true;
+      var item_id = this.application_list[index]["item_id"];
+      this.get_item_info(item_id);
     },
     add_notice() {
       var request = {
         type: 11,
         code: 1,
-        item_name: this.add_notice_info.item_name,
-        item_info: this.add_notice_info.item_info,
-        lost_location: this.add_notice_info.lost_location
+        item_name: this.add_notice_form.item_name,
+        item_info: this.add_notice_form.item_info,
+        lost_location: this.add_notice_form.lost_location
       };
+      this.send_msg(request);
+    },
+    send_msg(request) {
       this.ws.send(JSON.stringify(request, null, 0));
+      this.notification(JSON.stringify(request, null, 0), "发送消息");
+    },
+    get_item_info(item_id) {
+      this.$set(this.item, item_id, {});
+      //this.item[item_id] = {};
+      var request = {
+        type: 3,
+        code: 1,
+        item_id: item_id
+      };
+      this.send_msg(request);
+    },
+    get_notice_info(notice_id) {
+      this.$set(this.notice, notice_id, {});
+      //this.notice[notice_id] = {};
+      var request = {
+        type: 11,
+        code: 9,
+        notice_id: notice_id
+      };
+      this.send_msg(request);
     }
   }
 };
