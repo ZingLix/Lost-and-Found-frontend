@@ -34,6 +34,11 @@
         <div class="search">
           <i class="el-icon-search"></i>
         </div>
+        <div class="search" v-if="ws!=null">
+          <i class="el-icon-check" v-if="ws.readyState==1"></i>
+          <i class="el-icon-more" v-else-if="ws.readyState==0"></i>
+          <i class="el-icon-close" v-else></i>
+        </div>
         <el-button
           type="primary"
           style="float: right;padding:22px;margin-right :20px"
@@ -610,7 +615,16 @@ export default {
           tmp1["contact_id"] = obj1[4];
           tmp1["time"] = obj1[5];
           this.$set(this.notice, notice_id, tmp1);
+          if(!this.item.hasOwnProperty(obj1[3])) this.get_item_info(obj1[3])
           // this.item[notice_id] = tmp1;
+        }else if(result.code==20){
+          obj=result.notice_list;
+          this.my_notice_list=[]
+          for(var i=0;i<obj.length;++i){
+            this.my_notice_list.push(obj[i])
+            if(!this.notice.hasOwnProperty(obj[i])) this.get_notice_info(obj[i])
+          }
+          
         }
       }
     },
@@ -627,7 +641,7 @@ export default {
       this.send_msg(request);
     },
     updateMyNoticeList() {
-      var request = { type: 11, code: 2 };
+      var request = { type: 11, code: 10 };
       this.send_msg(request);
     },
     updateApplicationList() {
@@ -668,7 +682,6 @@ export default {
     },
     my_application_dialog_open(index) {
       this.cur_my_application_id = this.my_application_list[index];
-      console.log(this.my_application_list[index]);
       var item_id = this.notice[
         this.application[this.cur_my_application_id].notice_id
       ].item_id;
