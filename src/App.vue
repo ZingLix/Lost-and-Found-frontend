@@ -81,9 +81,6 @@
                         </div>
                       </el-main>
                     </el-container>
-                    <!-- <el-container v-else>
-                      <div v-loading="true"></div>
-                    </el-container>-->
                   </el-container>
                 </div>
                 <div v-else>
@@ -150,14 +147,16 @@
               <ul>
                 <div v-if="my_application_list.length">
                   <el-container
-                    v-for="(app_seq) in my_application_list"
+                    v-for="(app_seq,index) in my_application_list"
                     :key="app_seq"
                     class="listitem"
                   >
                     <el-aside width="150px">
                       <img class="img" src="./img/avatar.png">
                     </el-aside>
-                    <el-container>
+                    <el-container
+                      v-loading="(notice[application[app_seq].notice_id]=={})||(item[notice[application[app_seq].notice_id].item_id]=={})"
+                    >
                       <el-header>
                         <h1
                           class="name"
@@ -170,7 +169,7 @@
                         <div class="txt" v-else-if="application[app_seq].status==3">公告被取消</div>
                         <div class="txt" v-else-if="application[app_seq].status==4">申请已过期</div>
                         <div class="button">
-                          <el-button @click="my_applicationDialogVisible=true">查看</el-button>
+                          <el-button @click="my_application_dialog_open(index)">查看</el-button>
                         </div>
                       </el-main>
                     </el-container>
@@ -184,7 +183,6 @@
           </el-col>
         </el-row>
       </el-main>
-
       <el-dialog title="登陆" :visible.sync="loginDialogVisible" width="30%" center>
         <el-form ref="form" :model="login_form" label-width="80px">
           <el-form-item label="用户名">
@@ -245,7 +243,6 @@
           <el-button @click="my_noticeDialogVisible=false">取消</el-button>
         </div>
       </el-dialog>
-
       <el-dialog title="认领信息" :visible.sync="my_applicationDialogVisible" width="30%" center>
         <div
           v-loading="!item.hasOwnProperty(notice[application[cur_my_application_id].notice_id].item_id)"
@@ -434,31 +431,31 @@ export default {
         label: "label"
       },
       notice: {
-        1: {
-          finder_id: 2,
+        0: {
+          finder_id: 0,
           status: 0,
-          item_id: 1,
-          contact_id: 2,
-          time: "2018-8-8"
+          item_id: 0,
+          contact_id: 0,
+          time: ""
         }
       },
       application: {
-        1: {
-          applicant_id: 1,
-          notice_id: 1,
+        0: {
+          applicant_id: 0,
+          notice_id: 0,
           status: 0
         }
       },
       item: {
-        1: {
-          item_info: "xx23",
-          item_name: "手机",
-          lost_location: "食堂"
+        0: {
+          item_info: "",
+          item_name: "",
+          lost_location: ""
         }
       },
-      notice_list: [1], //notice_id
-      my_notice_list: [1],
-      my_application_list: [1],
+      notice_list: [], //notice_id
+      my_notice_list: [],
+      my_application_list: [],
       ws: null,
       user_id: 0,
       noticeDialogVisible: false,
@@ -477,9 +474,9 @@ export default {
         lost_location: ""
       },
       activeIndex: "1",
-      cur_notice_id: 1,
-      cur_my_notice_id: 1,
-      cur_my_application_id: 1
+      cur_notice_id: 0,
+      cur_my_notice_id: 0,
+      cur_my_application_id: 0
     };
   },
 
@@ -586,7 +583,6 @@ export default {
           });
           this.noticeDialogVisible = false;
         } else if (result.code == 14) {
-          this.application = {};
           this.my_application_list = [];
           for (var i = 0; i < result.application_info.length; i++) {
             var obj = result.application_info[i];
@@ -595,14 +591,14 @@ export default {
             tmp["applicant_id"] = obj[1];
             tmp["notice_id"] = obj[2];
             tmp["status"] = obj[3];
-            tmp["item_id"] = obj[4];
-            tmp["item_name"] = obj[5];
-            this.$set(this.my_application, app_seq, tmp);
+            this.$set(this.application, app_seq, tmp);
             //this.my_application[app_seq] = tmp;
-            this.my_application_list.push(app_seq);
+
             if (!this.notice.hasOwnProperty(obj[2]))
               this.get_notice_info(obj[2]);
-            if (!this.item.hasOwnProperty(obj[4])) this.get_item_info(obj[4]);
+            if (!this.item.hasOwnProperty(obj[4]) || this.item[obj[4]] == {})
+              this.get_item_info(obj[4]);
+            this.my_application_list.push(app_seq);
           }
         } else if (result.code == 19) {
           obj1 = result.notice_info;
@@ -613,7 +609,7 @@ export default {
           tmp1["item_id"] = obj1[3];
           tmp1["contact_id"] = obj1[4];
           tmp1["time"] = obj1[5];
-          this.$set(this.item, notice_id, tmp1);
+          this.$set(this.notice, notice_id, tmp1);
           // this.item[notice_id] = tmp1;
         }
       }
@@ -647,10 +643,10 @@ export default {
       this.send_msg(request);
     },
     notice_dialog_open(index) {
-      this.noticeDialogVisible = true;
       var notice_id = this.notice_list[index];
       var tmp = this.notice[notice_id];
       this.cur_notice_id = notice_id;
+      this.noticeDialogVisible = true;
       var request = {
         type: 3,
         code: 1,
@@ -659,10 +655,10 @@ export default {
       this.send_msg(request);
     },
     my_notice_dialog_open(index) {
-      this.my_noticeDialogVisible = true;
       var notice_id = this.my_notice_list[index];
       var tmp = this.notice[notice_id];
       this.cur_my_notice_id = notice_id;
+      this.my_noticeDialogVisible = true;
       var request = {
         type: 3,
         code: 1,
@@ -671,9 +667,14 @@ export default {
       this.send_msg(request);
     },
     my_application_dialog_open(index) {
-      this.applicationDialogVisible = true;
-      var item_id = this.application_list[index]["item_id"];
+      this.cur_my_application_id = this.my_application_list[index];
+      console.log(this.my_application_list[index]);
+      var item_id = this.notice[
+        this.application[this.cur_my_application_id].notice_id
+      ].item_id;
+
       this.get_item_info(item_id);
+      this.my_applicationDialogVisible = true;
     },
     add_notice() {
       var request = {
