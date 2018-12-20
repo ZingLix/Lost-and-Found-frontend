@@ -35,8 +35,8 @@
           <i class="el-icon-search"></i>
         </div>
         <div class="search" v-if="ws!=null">
-          <i class="el-icon-check" v-if="ws.readyState==1"></i>
-          <i class="el-icon-more" v-else-if="ws.readyState==0"></i>
+          <i class="el-icon-check" v-if="ws_state==1"></i>
+          <i class="el-icon-more" v-else-if="ws_state==0"></i>
           <i class="el-icon-close" v-else></i>
         </div>
         <el-button
@@ -222,7 +222,7 @@
       <el-dialog title="公告信息" :visible.sync="noticeDialogVisible" width="30%" center>
         <div
           v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
-          element-loading-text="获取申请信息中..."
+          element-loading-text="获取公告信息中..."
         >
           <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
           <div>物品名称：{{item[notice[cur_notice_id].item_id].item_name}}</div>
@@ -230,11 +230,11 @@
           <div>丢失位置：{{item[notice[cur_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_notice_id].time}}</div>
           <el-button type="primary" @click="claim(index)">认领</el-button>
-          <el-button @click="noticeDialogVisible=false">取消</el-button>
+          <el-button @click="noticeDialogVisible=false">关闭</el-button>
         </div>
       </el-dialog>
 
-      <el-dialog title="申请信息" :visible.sync="my_noticeDialogVisible" width="30%" center>
+      <el-dialog title="申请信息" :visible.sync="my_noticeDialogVisible" width="70%" center>
         <div
           v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
           element-loading-text="获取申请信息中..."
@@ -244,8 +244,36 @@
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
-          <el-button type="primary" @click="claim(index)">xxx</el-button>
-          <el-button @click="my_noticeDialogVisible=false">取消</el-button>
+          <el-button type="primary" @click="claim(index)">撤销</el-button>
+          <el-button @click="my_noticeDialogVisible=false">关闭</el-button>
+          <template>
+  <el-table
+    :data="tableData"
+    stripe
+    style="width: 100%">
+    <el-table-column
+      prop="date"
+      label="申请者"
+      width="100">
+    </el-table-column>
+    <el-table-column
+      prop="name"
+      label="申请时间"
+      width="150">
+    </el-table-column>
+        <el-table-column
+      fixed="right"
+      label="操作"
+>
+      <template slot-scope="scope">
+        <el-button @click="handleClick(scope.row)" type="text" size="small">查看</el-button>
+        <el-button type="text" size="small">交流</el-button>
+        <el-button type="text" size="small">接受</el-button>
+        <el-button type="text" size="small">拒绝</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+</template>
         </div>
       </el-dialog>
       <el-dialog title="认领信息" :visible.sync="my_applicationDialogVisible" width="30%" center>
@@ -263,8 +291,8 @@
           <div>物品描述：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[application[cur_my_application_id].notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[application[cur_my_application_id].notice_id].time}}</div>
-          <el-button type="primary" @click="askfor(index)">xxx</el-button>
-          <el-button @click="my_applicationDialogVisible=false">取消</el-button>
+          <el-button type="primary" @click="askfor(index)">放弃</el-button>
+          <el-button @click="my_applicationDialogVisible=false">关闭</el-button>
         </div>
       </el-dialog>
     </el-container>
@@ -462,6 +490,7 @@ export default {
       my_notice_list: [],
       my_application_list: [],
       ws: null,
+      ws_state:-1,
       user_id: 0,
       noticeDialogVisible: false,
       my_noticeDialogVisible: false,
@@ -518,6 +547,7 @@ export default {
       if (this.ws == null || this.ws.readyState != WebSocket.OPEN) {
         this.ws = new WebSocket("ws://118.25.27.241:9981");
       }
+            this.ws_state=this.ws.readyState;
       this.ws.onopen = this.ws_onopen;
       this.ws.onerror = this.ws_onerror;
       this.ws.onmessage = this.ws_onmessage;
@@ -528,6 +558,7 @@ export default {
     },
     ws_onopen() {
       this.notification("连接已建立", "成功", "success");
+      this.ws_state=this.ws.readyState;
     },
     ws_onerror() {
       this.notification("连接发生错误", "错误", "error");
@@ -630,6 +661,7 @@ export default {
     },
     ws_onclose() {
       this.notification("连接关闭", "错误", "error");
+      this.ws_state=this.ws.readyState;
     },
     login() {
       var content = JSON.stringify(this.login_form, null, 0);
