@@ -150,7 +150,7 @@
               <ul>
                 <div v-if="my_application_list.length">
                   <el-container
-                    v-for="(app_seq,index) in my_application_list"
+                    v-for="(app_seq) in my_application_list"
                     :key="app_seq"
                     class="listitem"
                   >
@@ -587,10 +587,10 @@ export default {
           this.noticeDialogVisible = false;
         } else if (result.code == 14) {
           this.application = {};
-          my_application_list = [];
+          this.my_application_list = [];
           for (var i = 0; i < result.application_info.length; i++) {
             var obj = result.application_info[i];
-            var tmp = {};
+            tmp = {};
             var app_seq = obj[0];
             tmp["applicant_id"] = obj[1];
             tmp["notice_id"] = obj[2];
@@ -599,14 +599,15 @@ export default {
             tmp["item_name"] = obj[5];
             this.$set(this.my_application, app_seq, tmp);
             //this.my_application[app_seq] = tmp;
-            my_application_list.push(app_seq);
-            if (!notice.hasOwnProperty(obj[2])) get_notice_info(obj[2]);
-            if (!item.hasOwnProperty(obj[4])) get_item_info(obj[4]);
+            this.my_application_list.push(app_seq);
+            if (!this.notice.hasOwnProperty(obj[2]))
+              this.get_notice_info(obj[2]);
+            if (!this.item.hasOwnProperty(obj[4])) this.get_item_info(obj[4]);
           }
         } else if (result.code == 19) {
-          var obj1 = result.notice_info;
-          var tmp1 = {};
-          var notice_id = obj1[0];
+          obj1 = result.notice_info;
+          tmp1 = {};
+          notice_id = obj1[0];
           tmp1["finder_id"] = obj1[1];
           tmp1["status"] = obj1[2];
           tmp1["item_id"] = obj1[3];
