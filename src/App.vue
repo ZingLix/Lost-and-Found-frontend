@@ -22,10 +22,13 @@
           <span class="username">{{user_id}}</span>
           <el-popover trigger="hover" width="50">
             <div style="text-align: center">
-              <el-button type="text" @click="loginDialogVisible = true">
-                <div v-if="user_id==0">登陆</div>
-                <div v-else>注销</div>
-              </el-button>
+              <div v-if="user_id==0">
+                <el-button type="text" @click="loginDialogVisible = true">登陆</el-button>
+                <el-button type="text" @click="registerDialogVisible = true">注册</el-button>
+              </div>
+              <div v-else>
+                <el-button type="text" @click="logout()">注销</el-button>
+              </div>
             </div>
             <img src="./img/avatar.png" class="avatar" slot="reference">
           </el-popover>
@@ -72,7 +75,7 @@
                         <h1 class="name">{{item[notice[notice_id].item_id].item_name}}</h1>
                       </el-header>
                       <el-main class="description">
-                        <div class="txt">{{item[notice[notice_id].item_id].item_info }}描述</div>
+                        <div class="txt">{{item[notice[notice_id].item_id].item_info }}</div>
                         <div class="button">
                           <el-button
                             v-if="notice[notice_id].status==0"
@@ -171,8 +174,9 @@
                         <div class="txt" v-if="application[app_seq].status==0">申请中...</div>
                         <div class="txt" v-else-if="application[app_seq].status==1">已接受</div>
                         <div class="txt" v-else-if="application[app_seq].status==2">被拒绝</div>
-                        <div class="txt" v-else-if="application[app_seq].status==3">公告被取消</div>
+                        <div class="txt" v-else-if="application[app_seq].status==3">申请被取消</div>
                         <div class="txt" v-else-if="application[app_seq].status==4">申请已过期</div>
+                        <div class="txt" v-else-if="application[app_seq].status==5">公告被取消</div>
                         <div class="button">
                           <el-button @click="my_application_dialog_open(index)">查看</el-button>
                         </div>
@@ -202,7 +206,29 @@
           </el-form-item>
         </el-form>
       </el-dialog>
-
+      <el-dialog title="注册" :visible.sync="registerDialogVisible" width="30%" center>
+        <el-form ref="form" :model="register_form" label-width="80px">
+          <el-form-item label="用户名">
+            <el-input v-model="register_form.username"></el-input>
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="register_form.password"></el-input>
+          </el-form-item>
+          <el-form-item label="重复密码">
+            <el-input v-model="register_form.password1"></el-input>
+            <div style="color:#ff0000" v-if="register_form.password!=register_form.password1">密码不一致</div>
+          </el-form-item>
+          <el-form-item>
+            <el-button
+              disabled
+              type="primary"
+              v-if="register_form.password!=register_form.password1"
+            >注册</el-button>
+            <el-button v-else type="primary" @click="register">注册</el-button>
+            <el-button @click="registerDialogVisible=false">取消</el-button>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
       <el-dialog title="添加公告" :visible.sync="addnoticeDialogVisible" width="30%" center>
         <el-form ref="form" :model="add_notice_form" label-width="80px">
           <el-form-item label="物品名称">
@@ -244,38 +270,30 @@
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
-          <el-button type="primary" @click="claim(index)">撤销</el-button>
+          <el-button
+            v-if="notice[cur_my_notice_id].status==0"
+            type="primary"
+            @click="notice_withdraw()"
+          >撤销</el-button>
+          <el-button v-else disabled type="primary">撤销</el-button>
           <el-button @click="my_noticeDialogVisible=false">关闭</el-button>
           <template>
-  <el-table
-    :data="tableData"
-    stripe
-    style="width: 100%">
-    <el-table-column
-      prop="date"
-      label="申请者"
-      width="100">
-    </el-table-column>
-    <el-table-column
-      prop="name"
-      label="申请时间"
-      width="150">
-    </el-table-column>
-        <el-table-column
-      fixed="right"
-      label="操作"
->
-      <template slot-scope="scope">
-        <el-button @click="handleClick(scope.row)" type="text" size="small">查看</el-button>
-        <el-button type="text" size="small">交流</el-button>
-        <el-button type="text" size="small">接受</el-button>
-        <el-button type="text" size="small">拒绝</el-button>
-      </template>
-    </el-table-column>
-  </el-table>
-</template>
+            <el-table stripe style="width: 100%">
+              <el-table-column prop="date" label="申请者" width="100"></el-table-column>
+              <el-table-column prop="name" label="申请时间" width="150"></el-table-column>
+              <el-table-column fixed="right" label="操作">
+                <template slot-scope="scope">
+                  <el-button @click="handleClick(scope.row)" type="text" size="small">查看</el-button>
+                  <el-button type="text" size="small">交流</el-button>
+                  <el-button type="text" size="small">接受</el-button>
+                  <el-button type="text" size="small">拒绝</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </template>
         </div>
       </el-dialog>
+
       <el-dialog title="认领信息" :visible.sync="my_applicationDialogVisible" width="30%" center>
         <div
           v-loading="!item.hasOwnProperty(notice[application[cur_my_application_id].notice_id].item_id)"
@@ -291,13 +309,19 @@
           <div>物品描述：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[application[cur_my_application_id].notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[application[cur_my_application_id].notice_id].time}}</div>
-          <el-button type="primary" @click="askfor(index)">放弃</el-button>
+
+          <el-button
+            v-if="application[cur_my_application_id].status==0"
+            type="primary"
+            @click="app_withdraw()"
+          >放弃</el-button>
+          <el-button v-else disabled type="primary">放弃</el-button>
           <el-button @click="my_applicationDialogVisible=false">关闭</el-button>
         </div>
       </el-dialog>
     </el-container>
   </div>
-</template>>
+</template>
   
 
 <style >
@@ -490,13 +514,14 @@ export default {
       my_notice_list: [],
       my_application_list: [],
       ws: null,
-      ws_state:-1,
+      ws_state: -1,
       user_id: 0,
       noticeDialogVisible: false,
       my_noticeDialogVisible: false,
       my_applicationDialogVisible: false,
       addnoticeDialogVisible: false,
       loginDialogVisible: false,
+      registerDialogVisible: false,
       login_form: {
         type: 1,
         username: "",
@@ -506,6 +531,11 @@ export default {
         item_name: "",
         item_info: "",
         lost_location: ""
+      },
+      register_form: {
+        username: "",
+        password: "",
+        password1: ""
       },
       activeIndex: "1",
       cur_notice_id: 0,
@@ -547,7 +577,7 @@ export default {
       if (this.ws == null || this.ws.readyState != WebSocket.OPEN) {
         this.ws = new WebSocket("ws://118.25.27.241:9981");
       }
-            this.ws_state=this.ws.readyState;
+      this.ws_state = this.ws.readyState;
       this.ws.onopen = this.ws_onopen;
       this.ws.onerror = this.ws_onerror;
       this.ws.onmessage = this.ws_onmessage;
@@ -558,7 +588,7 @@ export default {
     },
     ws_onopen() {
       this.notification("连接已建立", "成功", "success");
-      this.ws_state=this.ws.readyState;
+      this.ws_state = this.ws.readyState;
     },
     ws_onerror() {
       this.notification("连接发生错误", "错误", "error");
@@ -578,6 +608,24 @@ export default {
         } else {
           this.notification("登陆失败: " + result.content);
           this.$message.error(result.content);
+        }
+      } else if (result.type == 2) {
+        if (result.code == 1) {
+          this.$message({
+            message: "注册成功",
+            type: "success"
+          });
+          this.registerDialogVisible = false;
+          this.register_form = {
+            username: "",
+            password: "",
+            password1: ""
+          };
+        } else if (result.code == 2) {
+          this.$message({
+            message: result.content,
+            type: "error"
+          });
         }
       } else if (result.type == 3) {
         if (result.code == 11) {
@@ -611,6 +659,8 @@ export default {
             this.$set(this.notice, notice_id, tmp1);
             //this.notice[notice_id] = tmp1;
             if (!this.item.hasOwnProperty(obj1[3])) this.get_item_info(obj1[3]);
+            if (!this.notice.hasOwnProperty(obj1[0]))
+              this.get_notice_info(obj1[0]);
           }
         } else if (result.code == 13) {
           this.$message({
@@ -636,6 +686,22 @@ export default {
               this.get_item_info(obj[4]);
             this.my_application_list.push(app_seq);
           }
+        } else if (result.code == 16) {
+          var notice_id = result.notice_id;
+          this.$message({
+            message: "撤销成功",
+            type: "success"
+          });
+          this.my_noticeDialogVisible = false;
+          this.notice[notice_id].status = 3;
+        } else if (result.code == 17) {
+          var app_seq = result.application_seq;
+          this.$message({
+            message: "撤销成功",
+            type: "success"
+          });
+          this.my_applicationDialogVisible = false;
+          this.application[app_seq].status = 3;
         } else if (result.code == 19) {
           obj1 = result.notice_info;
           tmp1 = {};
@@ -646,22 +712,22 @@ export default {
           tmp1["contact_id"] = obj1[4];
           tmp1["time"] = obj1[5];
           this.$set(this.notice, notice_id, tmp1);
-          if(!this.item.hasOwnProperty(obj1[3])) this.get_item_info(obj1[3])
+          if (!this.item.hasOwnProperty(obj1[3])) this.get_item_info(obj1[3]);
           // this.item[notice_id] = tmp1;
-        }else if(result.code==20){
-          obj=result.notice_list;
-          this.my_notice_list=[]
-          for(var i=0;i<obj.length;++i){
-            this.my_notice_list.push(obj[i])
-            if(!this.notice.hasOwnProperty(obj[i])) this.get_notice_info(obj[i])
+        } else if (result.code == 20) {
+          obj = result.notice_list;
+          this.my_notice_list = [];
+          for (var i = 0; i < obj.length; ++i) {
+            this.my_notice_list.push(obj[i]);
+            if (!this.notice.hasOwnProperty(obj[i]))
+              this.get_notice_info(obj[i]);
           }
-          
         }
       }
     },
     ws_onclose() {
       this.notification("连接关闭", "错误", "error");
-      this.ws_state=this.ws.readyState;
+      this.ws_state = this.ws.readyState;
     },
     login() {
       var content = JSON.stringify(this.login_form, null, 0);
@@ -752,6 +818,37 @@ export default {
         type: 11,
         code: 9,
         notice_id: notice_id
+      };
+      this.send_msg(request);
+    },
+    notice_withdraw() {
+      var request = {
+        type: 11,
+        code: 6,
+        notice_id: this.cur_my_notice_id
+      };
+      this.send_msg(request);
+    },
+    app_withdraw() {
+      var request = {
+        type: 11,
+        code: 7,
+        application_seq: this.cur_my_application_id
+      };
+      this.send_msg(request);
+    },
+    logout() {
+      this.ws.close();
+      this.initWS();
+      this.user_id = 0;
+      this.my_notice_list = [];
+      this.my_application_list = [];
+    },
+    register() {
+      var request = {
+        type: 2,
+        username: this.register_form.username,
+        password: this.register_form.password
       };
       this.send_msg(request);
     }
