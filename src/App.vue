@@ -23,11 +23,20 @@
           <el-popover trigger="hover" width="50">
             <div style="text-align: center">
               <div v-if="user_id==0">
-                <el-button type="text" @click="loginDialogVisible = true">登陆</el-button>
-                <el-button type="text" @click="registerDialogVisible = true">注册</el-button>
+                <el-row>
+                  <el-button type="text" @click="loginDialogVisible = true">登陆</el-button>
+                </el-row>
+                <el-row>
+                  <el-button type="text" @click="registerDialogVisible = true">注册</el-button>
+                </el-row>
               </div>
               <div v-else>
-                <el-button type="text" @click="logout()">注销</el-button>
+                <el-row>
+                  <el-button type="text" @click="userinfo_dialog_open(user_id)">查看个人信息</el-button>
+                </el-row>
+                <el-row>
+                  <el-button type="text" @click="logout()">注销</el-button>
+                </el-row>
               </div>
             </div>
             <img src="./img/avatar.png" class="avatar" slot="reference">
@@ -277,20 +286,18 @@
           >撤销</el-button>
           <el-button v-else disabled type="primary">撤销</el-button>
           <el-button @click="my_noticeDialogVisible=false">关闭</el-button>
-          <template>
-            <el-table stripe style="width: 100%">
-              <el-table-column prop="date" label="申请者" width="100"></el-table-column>
-              <el-table-column prop="name" label="申请时间" width="150"></el-table-column>
-              <el-table-column fixed="right" label="操作">
-                <template slot-scope="scope">
-                  <el-button @click="handleClick(scope.row)" type="text" size="small">查看</el-button>
-                  <el-button type="text" size="small">交流</el-button>
-                  <el-button type="text" size="small">接受</el-button>
-                  <el-button type="text" size="small">拒绝</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </template>
+          <el-col>
+            <div v-for="(appseq,index) in notice_application_list[cur_my_notice_id]" :key="appseq">
+              <el-row>
+                申请者：{{userinfo[application[appseq].applicant_id].username}}，
+                申请时间：{{application[appseq].time}}
+                <el-button @click="handleClick(index)" type="text" size="small">查看</el-button>
+                <el-button type="text" size="small">交流</el-button>
+                <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
+                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button>
+              </el-row>
+            </div>
+          </el-col>
         </div>
       </el-dialog>
 
@@ -317,6 +324,21 @@
           >放弃</el-button>
           <el-button v-else disabled type="primary">放弃</el-button>
           <el-button @click="my_applicationDialogVisible=false">关闭</el-button>
+        </div>
+      </el-dialog>
+
+      <el-dialog title="个人信息" :visible.sync="userinfoDialogVisible" width="30%" center>
+        <div
+          v-loading="!userinfo.hasOwnProperty(cur_userinfo_id)"
+          element-loading-text="获取个人信息中..."
+        >
+          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <div>用户id: {{cur_userinfo_id}}</div>
+          <div>Email: {{userinfo[cur_userinfo_id].email}}</div>
+          <div>电话: {{userinfo[cur_userinfo_id].phone}}</div>
+          <div>描述: {{userinfo[cur_userinfo_id].description}}</div>
+          <el-button v-if="cur_userinfo_id==user_id" type="primary" @click="modify_userinfo()">修改</el-button>
+          <el-button @click="userinfoDialogVisible=false">关闭</el-button>
         </div>
       </el-dialog>
     </el-container>
@@ -500,7 +522,8 @@ export default {
         0: {
           applicant_id: 0,
           notice_id: 0,
-          status: 0
+          status: 0,
+          time: ""
         }
       },
       item: {
@@ -509,6 +532,17 @@ export default {
           item_name: "",
           lost_location: ""
         }
+      },
+      userinfo: {
+        0: {
+          username: "",
+          email: "",
+          phone: "",
+          description: ""
+        }
+      },
+      notice_application_list: {
+        0: []
       },
       notice_list: [], //notice_id
       my_notice_list: [],
@@ -522,6 +556,7 @@ export default {
       addnoticeDialogVisible: false,
       loginDialogVisible: false,
       registerDialogVisible: false,
+      userinfoDialogVisible: false,
       login_form: {
         type: 1,
         username: "",
@@ -540,7 +575,8 @@ export default {
       activeIndex: "1",
       cur_notice_id: 0,
       cur_my_notice_id: 0,
-      cur_my_application_id: 0
+      cur_my_application_id: 0,
+      cur_userinfo_id: 0
     };
   },
 
@@ -637,6 +673,16 @@ export default {
           this.$set(this.item, id, tmp);
           // this.item[id] = tmp;
         }
+      } else if (result.type == 4) {
+        if (result.code == 11) {
+          id = result.user_id;
+          tmp = {};
+          tmp["username"] = result.username;
+          tmp["email"] = result.email;
+          tmp["phone"] = result.phone;
+          tmp["description"] = result.description;
+          this.userinfo[id] = tmp;
+        }
       } else if (result.type == 11) {
         if (result.code == 11) {
           this.addnoticeDialogVisible = false;
@@ -677,17 +723,24 @@ export default {
             tmp["applicant_id"] = obj[1];
             tmp["notice_id"] = obj[2];
             tmp["status"] = obj[3];
+            tmp["time"] = obj[4];
             this.$set(this.application, app_seq, tmp);
             //this.my_application[app_seq] = tmp;
 
             if (!this.notice.hasOwnProperty(obj[2]))
               this.get_notice_info(obj[2]);
-            if (!this.item.hasOwnProperty(obj[4]) || this.item[obj[4]] == {})
-              this.get_item_info(obj[4]);
+            if (!this.userinfo.hasOwnProperty(obj[1]))
+              this.get_user_info(obj[1]);
             this.my_application_list.push(app_seq);
           }
+        } else if (result.code == 15) {
+          this.$message({
+            message: "操作成功",
+            type: "success"
+          });
+          this.my_noticeDialogVisible = false;
         } else if (result.code == 16) {
-          var notice_id = result.notice_id;
+          notice_id = result.notice_id;
           this.$message({
             message: "撤销成功",
             type: "success"
@@ -695,7 +748,7 @@ export default {
           this.my_noticeDialogVisible = false;
           this.notice[notice_id].status = 3;
         } else if (result.code == 17) {
-          var app_seq = result.application_seq;
+          app_seq = result.application_seq;
           this.$message({
             message: "撤销成功",
             type: "success"
@@ -717,10 +770,36 @@ export default {
         } else if (result.code == 20) {
           obj = result.notice_list;
           this.my_notice_list = [];
-          for (var i = 0; i < obj.length; ++i) {
+          for (i = 0; i < obj.length; ++i) {
             this.my_notice_list.push(obj[i]);
             if (!this.notice.hasOwnProperty(obj[i]))
               this.get_notice_info(obj[i]);
+          }
+        } else if (result.code == 31) {
+          notice_id = result.notice_id;
+          this.notice_application_list[notice_id] = [];
+          for (i = 0; i < result.application_list.length; ++i) {
+            this.notice_application_list[notice_id].push(
+              result.application_list[i]
+            );
+            if (!this.application.hasOwnProperty(result.application_list[i])) {
+              this.get_application_info(result.application_list[i]);
+            }
+          }
+        } else if (result.code == 32) {
+          obj = result.application_info;
+          tmp = {};
+          app_seq = obj[0];
+          tmp["applicant_id"] = obj[1];
+          tmp["notice_id"] = obj[2];
+          tmp["status"] = obj[3];
+          tmp["time"] = obj[4];
+          this.$set(this.application, app_seq, tmp);
+          if (!this.userinfo.hasOwnProperty(obj[1])) {
+            this.get_user_info(obj[1]);
+          }
+          if (!this.notice.hasOwnProperty(obj[2])) {
+            this.get_notice_info(obj[2]);
           }
         }
       }
@@ -777,6 +856,12 @@ export default {
         item_id: tmp["item_id"]
       };
       this.send_msg(request);
+      request = {
+        type: 11,
+        code: 21,
+        notice_id: notice_id
+      };
+      this.send_msg(request);
     },
     my_application_dialog_open(index) {
       this.cur_my_application_id = this.my_application_list[index];
@@ -786,6 +871,13 @@ export default {
 
       this.get_item_info(item_id);
       this.my_applicationDialogVisible = true;
+    },
+    userinfo_dialog_open(userid) {
+      if (!this.userinfo.hasOwnProperty(userid)) {
+        this.get_user_info(userid);
+      }
+      this.cur_userinfo_id = userid;
+      this.userinfoDialogVisible = true;
     },
     add_notice() {
       var request = {
@@ -821,6 +913,24 @@ export default {
       };
       this.send_msg(request);
     },
+    get_user_info(userid) {
+      this.$set(this.userinfo, userid, {});
+      var request = {
+        type: 4,
+        code: 1,
+        user_id: userid
+      };
+      this.send_msg(request);
+    },
+    get_application_info(app_seq) {
+      this.$set(this.application, app_seq, {});
+      var request = {
+        type: 11,
+        code: 22,
+        application_seq: app_seq
+      };
+      this.send_msg(request);
+    },
     notice_withdraw() {
       var request = {
         type: 11,
@@ -843,12 +953,39 @@ export default {
       this.user_id = 0;
       this.my_notice_list = [];
       this.my_application_list = [];
+      this.$message({
+        message: "已注销",
+        type: "success"
+      });
     },
     register() {
       var request = {
         type: 2,
         username: this.register_form.username,
         password: this.register_form.password
+      };
+      this.send_msg(request);
+    },
+    modify_userinfo() {},
+    application_accept(index) {
+      var request = {
+        type: 11,
+        code: 5,
+        application_seq: this.notice_application_list[this.cur_my_notice_id][
+          index
+        ],
+        status: 1
+      };
+      this.send_msg(request);
+    },
+    application_refuse(index) {
+      var request = {
+        type: 11,
+        code: 5,
+        application_seq: this.notice_application_list[this.cur_my_notice_id][
+          index
+        ],
+        status: 2
       };
       this.send_msg(request);
     }
