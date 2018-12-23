@@ -43,6 +43,7 @@
           </el-popover>
         </div>
 
+        <el-button class="search" type="text" icon="el-icon-message" @click="chat_dialog_open()"></el-button>
         <div class="search">
           <i class="el-icon-search"></i>
         </div>
@@ -279,6 +280,19 @@
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
+
+          <el-col>
+            <div v-for="(appseq,index) in notice_application_list[cur_my_notice_id]" :key="appseq">
+              <el-row>
+                申请者：{{userinfo[application[appseq].applicant_id].username}}，
+                申请时间：{{application[appseq].time}}
+                <el-button @click="view_person(index)" type="text" size="small">查看</el-button>
+                <el-button type="text" size="small">交流</el-button>
+                <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
+                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button>
+              </el-row>
+            </div>
+          </el-col>
           <el-button
             v-if="notice[cur_my_notice_id].status==0"
             type="primary"
@@ -286,18 +300,6 @@
           >撤销</el-button>
           <el-button v-else disabled type="primary">撤销</el-button>
           <el-button @click="my_noticeDialogVisible=false">关闭</el-button>
-          <el-col>
-            <div v-for="(appseq,index) in notice_application_list[cur_my_notice_id]" :key="appseq">
-              <el-row>
-                申请者：{{userinfo[application[appseq].applicant_id].username}}，
-                申请时间：{{application[appseq].time}}
-                <el-button @click="handleClick(index)" type="text" size="small">查看</el-button>
-                <el-button type="text" size="small">交流</el-button>
-                <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
-                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button>
-              </el-row>
-            </div>
-          </el-col>
         </div>
       </el-dialog>
 
@@ -341,6 +343,32 @@
           <el-button @click="userinfoDialogVisible=false">关闭</el-button>
         </div>
       </el-dialog>
+
+      <el-dialog title="聊天" :visible.sync="chatDialogVisible" width="70%" center>
+        <el-container>
+          <el-aside width="200px">
+            <div v-for="(userid,index) in chat_userid_list" :key="index">
+              <el-button
+                type="txt"
+                @click="cur_chat_id = chat_userid_list[index]"
+              >{{chat_userid_list[index]}}</el-button>
+            </div>
+          </el-aside>
+          <el-container>
+            <el-main style="width:100%">
+              <div v-if="cur_chat_id=0">
+                <div v-for="(obj,index) in chat_history[cur_chat_id]" :key="index">
+                  <div v-if="obj[0]">发送：</div>
+                  <div v-else>接收：</div>
+                  {{obj[1]}}
+                </div>
+                <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
+                <el-button type="txt" @click="send()">发送</el-button>
+              </div>
+            </el-main>
+          </el-container>
+        </el-container>
+      </el-dialog>
     </el-container>
   </div>
 </template>
@@ -348,7 +376,8 @@
 
 <style >
 #app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
@@ -404,9 +433,10 @@ body {
   border-radius: 20px;
   margin: 10px 0 10px 10px;
 }
+
 .el-main {
   background-color: rgb(255, 255, 255);
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 0);
   align-self: center;
   width: 1140px;
 }
@@ -544,9 +574,15 @@ export default {
       notice_application_list: {
         0: []
       },
+      chat_history: {
+        0: {
+          0: [true, "123"]
+        }
+      }, //msg_seq:[send/recv, content]
       notice_list: [], //notice_id
       my_notice_list: [],
       my_application_list: [],
+      chat_userid_list: [],
       ws: null,
       ws_state: -1,
       user_id: 0,
@@ -557,6 +593,7 @@ export default {
       loginDialogVisible: false,
       registerDialogVisible: false,
       userinfoDialogVisible: false,
+      chatDialogVisible: false,
       login_form: {
         type: 1,
         username: "",
@@ -572,14 +609,15 @@ export default {
         password: "",
         password1: ""
       },
+      msg_input: "",
       activeIndex: "1",
       cur_notice_id: 0,
       cur_my_notice_id: 0,
       cur_my_application_id: 0,
-      cur_userinfo_id: 0
+      cur_userinfo_id: 0,
+      cur_chat_id: 0
     };
   },
-
   created() {
     this.initWS();
   },
@@ -682,6 +720,18 @@ export default {
           tmp["phone"] = result.phone;
           tmp["description"] = result.description;
           this.userinfo[id] = tmp;
+        }
+      } else if (result.type == 5) {
+        if (result.code == 2) {
+          var arr = result.messages;
+          for (i = 0; i < arr.length; ++i) {
+            tmp = [];
+            var msg_seq = arr[i][0];
+            tmp[0] = arr[i][1] == 1 ? true : false;
+            var target_id = arr[i][2];
+            tmp[1] = arr[i][3];
+            this.$set(this.chat_history[target_id], msg_seq, tmp);
+          }
         }
       } else if (result.type == 11) {
         if (result.code == 11) {
@@ -879,6 +929,16 @@ export default {
       this.cur_userinfo_id = userid;
       this.userinfoDialogVisible = true;
     },
+    chat_dialog_open() {
+      if (this.cur_chat_id == 0) {
+        var request = {
+          type: 5,
+          code: 2
+        };
+        this.send_msg(request);
+      }
+      this.chatDialogVisible = true;
+    },
     add_notice() {
       var request = {
         type: 11,
@@ -987,6 +1047,25 @@ export default {
         ],
         status: 2
       };
+      this.send_msg(request);
+    },
+    view_person(index) {
+      this.cur_userinfo_id = this.application[
+        this.notice_application_list[this.cur_my_notice_id][index]
+      ].applicant_id;
+      if (!this.userinfo.hasOwnProperty(this.cur_userinfo_id)) {
+        this.get_user_info(this.cur_userinfo_id);
+      }
+      this.userinfoDialogVisible = true;
+    },
+    send() {
+      var request = {
+        type: 5,
+        code: 1,
+        recver_id: this.cur_chat_id,
+        content: this.msg_input
+      };
+      this.msg_input = "";
       this.send_msg(request);
     }
   }
