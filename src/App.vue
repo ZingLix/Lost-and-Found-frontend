@@ -14,12 +14,15 @@
           active-text-color="#ffd04b"
         >
           <el-menu-item index="1">首页</el-menu-item>
-          <el-menu-item index="2">我发起的公告</el-menu-item>
-          <el-menu-item index="3">我认领的物品</el-menu-item>
+          <el-menu-item index="2" v-if="user_id!=0">我发起的公告</el-menu-item>
+          <el-menu-item index="2" v-else disabled>我发起的公告</el-menu-item>
+           <el-menu-item index="3" v-if="user_id!=0">我认领的物品</el-menu-item>
+          <el-menu-item index="3" v-else disabled>我认领的物品</el-menu-item>
         </el-menu>
 
         <div class="userinfo">
-          <span class="username">{{user_id}}</span>
+          <span class="username" v-if="user_id==0">未登录</span>
+          <span class="username" v-else>{{userinfo[user_id].username}}</span>
           <el-popover trigger="hover" width="50">
             <div style="text-align: center">
               <div v-if="user_id==0">
@@ -280,19 +283,27 @@
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
-
-          <el-col>
-            <div v-for="(appseq,index) in notice_application_list[cur_my_notice_id]" :key="appseq">
-              <el-row>
-                申请者：{{userinfo[application[appseq].applicant_id].username}}，
-                申请时间：{{application[appseq].time}}
-                <el-button @click="view_person(index)" type="text" size="small">查看</el-button>
+          <table class="el-table ">
+            <thead>
+              <tr>
+                <th>申请者</th>
+                <th>申请时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody class="">
+              <tr v-for="(appseq,index) in notice_application_list[cur_my_notice_id]"
+              :key="appseq" class="">
+              <td>{{userinfo[application[appseq].applicant_id].username}}</td>
+              <td>{{application[appseq].time}}</td>
+              <td><el-button @click="view_person(index)" type="text" size="small">查看</el-button>
                 <el-button type="text" size="small" @click="communicate_dialog_open(index)">交流</el-button>
                 <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
-                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button>
-              </el-row>
-            </div>
-          </el-col>
+                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button></td>
+              </tr>
+            </tbody>          
+          </table>
+          <br /><br />
           <el-button
             v-if="notice[cur_my_notice_id].status==0"
             type="primary"
@@ -308,10 +319,44 @@
           v-loading="!item.hasOwnProperty(notice[application[cur_my_application_id].notice_id].item_id)"
           element-loading-text="获取认领信息中..."
         >
-          <el-steps :space="200" :active="1" finish-status="success">
-            <el-step title="已完成"></el-step>
-            <el-step title="进行中"></el-step>
-            <el-step title="步骤 3"></el-step>
+          <el-steps
+            :space="200"
+            :active="application[cur_my_application_id].status==0?1:3"
+            align-center
+            finish-status="success"
+          >
+            <el-step title="发起申请"></el-step>
+
+            <el-step title="等待处理"></el-step>
+            <el-step
+              title="已接受"
+              v-if="application[cur_my_application_id].status==1"
+              status="success"
+            ></el-step>
+            <el-step
+              title="被拒绝"
+              v-else-if="application[cur_my_application_id].status==2"
+              status="error"
+            ></el-step>
+            <el-step
+              title="申请被取消"
+              v-else-if="application[cur_my_application_id].status==3"
+              icon="el-icon-warning"
+              status="finish"
+            ></el-step>
+            <el-step
+              title="过期"
+              v-else-if="application[cur_my_application_id].status==4"
+              icon="el-icon-warning"
+              status="finish"
+            ></el-step>
+            <el-step
+              title="公告被取消"
+              v-else-if="application[cur_my_application_id].status==5"
+              icon="el-icon-warning"
+              status="finish"
+            ></el-step>
+            <el-step title="完成申请" v-else-if="application[cur_my_application_id].status==0"></el-step>
           </el-steps>
           <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
           <div>物品名称：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_name}}</div>
@@ -349,22 +394,23 @@
           <el-aside width="200px">
             <div v-for="(userid,index) in chat_userid_list" :key="index">
               <el-button
-                type="txt"
+                type="text"
                 @click="cur_chat_id = chat_userid_list[index]"
-              >{{chat_userid_list[index]}}</el-button>
+              >{{userinfo[chat_userid_list[index]].username}}</el-button>
+              <hr>
             </div>
           </el-aside>
           <el-container>
             <el-main style="width:100%">
               <template>
-              <div v-if="cur_chat_id!=0">
-                <div v-for="(obj) in chat_history[cur_chat_id]" :key="obj.key">
-                  <div v-if="obj[0]">发送：{{obj[1]}}</div>
-                  <div v-else>接收：{{obj[1]}}</div>
+                <div v-if="cur_chat_id!=0">
+                  <div v-for="(obj) in chat_history[cur_chat_id]" :key="obj.key">
+                    <div v-if="obj[0]">发送：{{obj[1]}}</div>
+                    <div v-else>接收：{{obj[1]}}</div>
+                  </div>
+                  <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
+                  <el-button type="txt" @click="send()">发送</el-button>
                 </div>
-                <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
-                <el-button type="txt" @click="send()">发送</el-button>
-              </div>
               </template>
             </el-main>
           </el-container>
@@ -483,6 +529,27 @@ body {
 .container .main .list .description .button {
   float: right;
 }
+
+.table {
+  border: 2px solid #ddd;
+}
+tr {
+  display: table-row;
+  vertical-align: inherit;
+  border-color: inherit;
+}
+.border {
+  border-style: solid;
+  border-width: 2px;
+  border-color: #ddd;
+}
+
+.content {
+  border-width: 0;
+  border-style: solid;
+  border-bottom: 1px;
+  border-bottom-color: #ddd;
+}
 </style>
 <script >
 export default {
@@ -576,9 +643,7 @@ export default {
         0: []
       },
       chat_history: {
-        0: {
-          0: [true, "123"]
-        }
+        
       }, //msg_seq:[send/recv, content]
       notice_list: [], //notice_id
       my_notice_list: [],
@@ -664,6 +729,7 @@ export default {
     ws_onopen() {
       this.notification("连接已建立", "成功", "success");
       this.ws_state = this.ws.readyState;
+      this.updateNoticeList();
     },
     ws_onerror() {
       this.notification("连接发生错误", "错误", "error");
@@ -680,6 +746,7 @@ export default {
             message: "登陆成功",
             type: "success"
           });
+          this.get_user_info(this.user_id);
         } else {
           this.notification("登陆失败: " + result.content);
           this.$message.error(result.content);
@@ -723,12 +790,14 @@ export default {
           this.userinfo[id] = tmp;
         }
       } else if (result.type == 5) {
-        if (result.code==0){
-          var sender_id=result.sender_id;
-          this.$set(this.chat_history[sender_id],result.msg_seq,[false,result.content])
+        if (result.code == 0) {
+          var sender_id = result.sender_id;
+          this.$set(this.chat_history[sender_id], result.msg_seq, [
+            false,
+            result.content
+          ]);
           //this.chat_history[sender_id][result.msg_seq]=[false,result.content]
-        }else 
-        if (result.code == 12) {
+        } else if (result.code == 12) {
           var arr = result.messages;
           for (i = 0; i < arr.length; ++i) {
             tmp = [];
@@ -736,15 +805,17 @@ export default {
             tmp[0] = arr[i][1] == 1 ? true : false;
             var target_id = arr[i][2];
             tmp[1] = arr[i][3];
-            if(!this.chat_history.hasOwnProperty(target_id)){
-              this.chat_history[target_id]={}
+            if (!this.chat_history.hasOwnProperty(target_id)) {
+              this.chat_history[target_id] = {};
             }
-            console.log(tmp)
-           // this.chat_history[target_id][msg_seq]=tmp
-           this.$set(this.chat_history[target_id], msg_seq, tmp);
+            // this.chat_history[target_id][msg_seq]=tmp
+            this.$set(this.chat_history[target_id], msg_seq, tmp);
           }
-          for(var key in this.chat_history){
-            this.chat_userid_list.push(key)
+          for (var key in this.chat_history) {
+            this.chat_userid_list.push(key);
+            if(!this.userinfo.hasOwnProperty(key)){
+              this.get_user_info(parseInt(key))
+            }
           }
         }
       } else if (result.type == 11) {
@@ -964,6 +1035,9 @@ export default {
       this.send_msg(request);
     },
     send_msg(request) {
+      if (this.ws.readyState == WebSocket.CLOSED) {
+        this.initWS();
+      }
       this.ws.send(JSON.stringify(request, null, 0));
       this.notification(JSON.stringify(request, null, 0), "发送消息");
     },
@@ -1082,17 +1156,23 @@ export default {
       this.msg_input = "";
       this.send_msg(request);
     },
-    communicate_dialog_open(index){
-      var user_id=this.application[
+    communicate_dialog_open(index) {
+      var user_id = this.application[
         this.notice_application_list[this.cur_my_notice_id][index]
       ].applicant_id;
-      if(!this.chat_history.hasOwnProperty(user_id)){
-        this.$set(this.chat_history,user_id,{})
+      if (!this.chat_history.hasOwnProperty(user_id)) {
+        this.$set(this.chat_history, user_id, {});
       }
-      this.cur_chat_id=user_id;
-      if(!(user_id in this.chat_userid_list)){
-      this.chat_userid_list.push(user_id)}
-      this.chatDialogVisible=true;
+      this.cur_chat_id = user_id;
+      if (!(user_id in this.chat_userid_list)) {
+        this.chat_userid_list.push(user_id);
+      }
+      this.chatDialogVisible = true;
+    },
+    apply_status_converter() {
+      //switch(this.application[this.cur_my_application_id].status){
+      //   case
+      // }
     }
   }
 };
