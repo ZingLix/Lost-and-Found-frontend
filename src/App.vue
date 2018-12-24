@@ -287,7 +287,7 @@
                 申请者：{{userinfo[application[appseq].applicant_id].username}}，
                 申请时间：{{application[appseq].time}}
                 <el-button @click="view_person(index)" type="text" size="small">查看</el-button>
-                <el-button type="text" size="small">交流</el-button>
+                <el-button type="text" size="small" @click="communicate_dialog_open(index)">交流</el-button>
                 <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
                 <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button>
               </el-row>
@@ -356,15 +356,16 @@
           </el-aside>
           <el-container>
             <el-main style="width:100%">
-              <div v-if="cur_chat_id=0">
-                <div v-for="(obj,index) in chat_history[cur_chat_id]" :key="index">
-                  <div v-if="obj[0]">发送：</div>
-                  <div v-else>接收：</div>
-                  {{obj[1]}}
+              <template>
+              <div v-if="cur_chat_id!=0">
+                <div v-for="(obj) in chat_history[cur_chat_id]" :key="obj.key">
+                  <div v-if="obj[0]">发送：{{obj[1]}}</div>
+                  <div v-else>接收：{{obj[1]}}</div>
                 </div>
                 <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
                 <el-button type="txt" @click="send()">发送</el-button>
               </div>
+              </template>
             </el-main>
           </el-container>
         </el-container>
@@ -722,7 +723,12 @@ export default {
           this.userinfo[id] = tmp;
         }
       } else if (result.type == 5) {
-        if (result.code == 2) {
+        if (result.code==0){
+          var sender_id=result.sender_id;
+          this.$set(this.chat_history[sender_id],result.msg_seq,[false,result.content])
+          //this.chat_history[sender_id][result.msg_seq]=[false,result.content]
+        }else 
+        if (result.code == 12) {
           var arr = result.messages;
           for (i = 0; i < arr.length; ++i) {
             tmp = [];
@@ -730,7 +736,15 @@ export default {
             tmp[0] = arr[i][1] == 1 ? true : false;
             var target_id = arr[i][2];
             tmp[1] = arr[i][3];
-            this.$set(this.chat_history[target_id], msg_seq, tmp);
+            if(!this.chat_history.hasOwnProperty(target_id)){
+              this.chat_history[target_id]={}
+            }
+            console.log(tmp)
+           // this.chat_history[target_id][msg_seq]=tmp
+           this.$set(this.chat_history[target_id], msg_seq, tmp);
+          }
+          for(var key in this.chat_history){
+            this.chat_userid_list.push(key)
           }
         }
       } else if (result.type == 11) {
@@ -1062,11 +1076,23 @@ export default {
       var request = {
         type: 5,
         code: 1,
-        recver_id: this.cur_chat_id,
+        recver_id: parseInt(this.cur_chat_id),
         content: this.msg_input
       };
       this.msg_input = "";
       this.send_msg(request);
+    },
+    communicate_dialog_open(index){
+      var user_id=this.application[
+        this.notice_application_list[this.cur_my_notice_id][index]
+      ].applicant_id;
+      if(!this.chat_history.hasOwnProperty(user_id)){
+        this.$set(this.chat_history,user_id,{})
+      }
+      this.cur_chat_id=user_id;
+      if(!(user_id in this.chat_userid_list)){
+      this.chat_userid_list.push(user_id)}
+      this.chatDialogVisible=true;
     }
   }
 };
