@@ -16,7 +16,7 @@
           <el-menu-item index="1">首页</el-menu-item>
           <el-menu-item index="2" v-if="user_id!=0">我发起的公告</el-menu-item>
           <el-menu-item index="2" v-else disabled>我发起的公告</el-menu-item>
-           <el-menu-item index="3" v-if="user_id!=0">我认领的物品</el-menu-item>
+          <el-menu-item index="3" v-if="user_id!=0">我认领的物品</el-menu-item>
           <el-menu-item index="3" v-else disabled>我认领的物品</el-menu-item>
         </el-menu>
 
@@ -51,15 +51,31 @@
           <i class="el-icon-search"></i>
         </div>
         <div class="search" v-if="ws!=null">
-          <i class="el-icon-check" v-if="ws_state==1"></i>
-          <i class="el-icon-more" v-else-if="ws_state==0"></i>
-          <i class="el-icon-close" v-else></i>
+          <el-tooltip
+            class="item"
+            effect="dark"
+            content="连接正常"
+            placement="bottom"
+            v-if="ws_state==1"
+          >
+            <i class="el-icon-check"></i>
+          </el-tooltip>
+          <el-tooltip
+            class="item"
+            effect="dark"
+            content="连接中..."
+            placement="bottom"
+            v-else-if="ws_state==0"
+          >
+            <i class="el-icon-more"></i>
+          </el-tooltip>
+          <el-tooltip class="item" effect="dark" content="连接失败，点击重连" placement="bottom" v-else>
+            <i class="el-icon-close" @click="initWS()" type="text" style="padding-right:0"></i>
+          </el-tooltip>
         </div>
-        <el-button
-          type="primary"
-          style="float: right;padding:22px;margin-right :20px"
-          @click="addnoticeDialogVisible=true"
-        >添加公告</el-button>
+        <el-tooltip class="item" effect="dark" content="添加公告" placement="bottom">
+          <el-button class="el-icon-plus search" type="text" @click="addnoticeDialogVisible=true"></el-button>
+        </el-tooltip>
       </el-header>
 
       <el-main class="main" v-if="activeIndex==1">
@@ -283,27 +299,53 @@
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
           <div>发布时间：{{notice[cur_my_notice_id].time}}</div>
-          <table class="el-table ">
+          <table class="el-table">
             <thead>
               <tr>
                 <th>申请者</th>
                 <th>申请时间</th>
+                <th>状态</th>
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody class="">
-              <tr v-for="(appseq,index) in notice_application_list[cur_my_notice_id]"
-              :key="appseq" class="">
-              <td>{{userinfo[application[appseq].applicant_id].username}}</td>
-              <td>{{application[appseq].time}}</td>
-              <td><el-button @click="view_person(index)" type="text" size="small">查看</el-button>
-                <el-button type="text" size="small" @click="communicate_dialog_open(index)">交流</el-button>
-                <el-button type="text" size="small" @click="application_accept(index)">接受</el-button>
-                <el-button type="text" size="small" @click="application_refuse(index)">拒绝</el-button></td>
+            <tbody class>
+              <tr
+                v-for="(appseq,index) in notice_application_list[cur_my_notice_id]"
+                :key="appseq"
+                class
+              >
+                <td>{{userinfo[application[appseq].applicant_id].username}}</td>
+                <td>{{application[appseq].time}}</td>
+                <td>
+                  <div v-if="application[appseq].status==0">待处理</div>
+                  <div v-else-if="application[appseq].status==1">已接受</div>
+                  <div v-else-if="application[appseq].status==2">已拒绝</div>
+                  <div v-else-if="application[appseq].status==3">申请者取消</div>
+                  <div v-else>过期</div>
+                </td>
+                <td>
+                  <el-button @click="view_person(index)" type="text" size="small">查看</el-button>
+                  <el-button type="text" size="small" @click="communicate_dialog_open(index)">交流</el-button>
+                  <el-button
+                    type="text"
+                    size="small"
+                    v-if="application[appseq].status!=0"
+                    disabled
+                  >接受</el-button>
+                  <el-button type="text" size="small" @click="application_accept(index)" v-else>接受</el-button>
+                  <el-button
+                    type="text"
+                    size="small"
+                    v-if="application[appseq].status!=0"
+                    disabled
+                  >拒绝</el-button>
+                  <el-button type="text" size="small" @click="application_refuse(index)" v-else>拒绝</el-button>
+                </td>
               </tr>
-            </tbody>          
+            </tbody>
           </table>
-          <br /><br />
+          <br>
+          <br>
           <el-button
             v-if="notice[cur_my_notice_id].status==0"
             type="primary"
@@ -380,7 +422,7 @@
           element-loading-text="获取个人信息中..."
         >
           <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
-          <div>用户id: {{cur_userinfo_id}}</div>
+          <div>用户名: {{userinfo[cur_userinfo_id].username}}</div>
           <div>Email: {{userinfo[cur_userinfo_id].email}}</div>
           <div>电话: {{userinfo[cur_userinfo_id].phone}}</div>
           <div>描述: {{userinfo[cur_userinfo_id].description}}</div>
@@ -389,7 +431,7 @@
         </div>
       </el-dialog>
 
-      <el-dialog title="聊天" :visible.sync="chatDialogVisible" width="70%" center>
+      <el-dialog title="聊天" :visible.sync="chatDialogVisible" width="50%" center>
         <el-container>
           <el-aside width="200px">
             <div v-for="(userid,index) in chat_userid_list" :key="index">
@@ -401,15 +443,21 @@
             </div>
           </el-aside>
           <el-container>
-            <el-main style="width:100%">
+            <el-main>
               <template>
                 <div v-if="cur_chat_id!=0">
                   <div v-for="(obj) in chat_history[cur_chat_id]" :key="obj.key">
                     <div v-if="obj[0]">发送：{{obj[1]}}</div>
                     <div v-else>接收：{{obj[1]}}</div>
                   </div>
-                  <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
-                  <el-button type="txt" @click="send()">发送</el-button>
+                  <el-row :gutter="20" style="width:70%">
+                    <el-col :span="22">
+                      <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
+                    </el-col>
+                    <el-col :span="1">
+                      <el-button type="txt" @click="send()">发送</el-button>
+                    </el-col>
+                  </el-row>
                 </div>
               </template>
             </el-main>
@@ -437,7 +485,7 @@ body {
 }
 
 .container .header {
-  background: #545c64;
+  background: rgb(84, 92, 100);
   line-height: 60px;
   height: 60px;
   padding: 0px;
@@ -468,7 +516,7 @@ body {
 .container .header .userinfo {
   float: right;
   color: #ffffff;
-  font-size: 22px;
+  font-size: 18px;
   height: 60px;
   padding-right: 20px;
 }
@@ -642,9 +690,7 @@ export default {
       notice_application_list: {
         0: []
       },
-      chat_history: {
-        
-      }, //msg_seq:[send/recv, content]
+      chat_history: {}, //msg_seq:[send/recv, content]
       notice_list: [], //notice_id
       my_notice_list: [],
       my_application_list: [],
@@ -763,6 +809,7 @@ export default {
             password: "",
             password1: ""
           };
+          this.initWS();
         } else if (result.code == 2) {
           this.$message({
             message: result.content,
@@ -813,8 +860,8 @@ export default {
           }
           for (var key in this.chat_history) {
             this.chat_userid_list.push(key);
-            if(!this.userinfo.hasOwnProperty(key)){
-              this.get_user_info(parseInt(key))
+            if (!this.userinfo.hasOwnProperty(key)) {
+              this.get_user_info(parseInt(key));
             }
           }
         }
