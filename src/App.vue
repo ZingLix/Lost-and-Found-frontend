@@ -80,12 +80,12 @@
 
       <el-main class="main" v-if="activeIndex==1">
         <el-row>
-          <el-col :span="6">
+          <!-- <el-col :span="6">
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col>
-          <el-col :span="18">
+          </el-col> -->
+          <el-col :span="16" :offset="4">
             <div class="list">
               <ul>
                 <div v-if="notice_list.length">
@@ -130,12 +130,12 @@
       </el-main>
       <el-main v-else-if="activeIndex==2" class="main">
         <el-row>
-          <el-col :span="6">
+          <!-- <el-col :span="6">
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col>
-          <el-col :span="18">
+          </el-col> -->
+          <el-col :offset="4" :span="16">
             <div class="list">
               <ul>
                 <div v-if="my_notice_list.length">
@@ -174,12 +174,12 @@
       </el-main>
       <el-main v-else-if="activeIndex==3" class="main">
         <el-row>
-          <el-col :span="6">
+          <!-- <el-col :span="6">
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col>
-          <el-col :span="18">
+          </el-col> -->
+          <el-col :offset="4" :span="16">
             <div class="list">
               <ul>
                 <div v-if="my_application_list.length">
@@ -432,7 +432,7 @@
       </el-dialog>
 
       <el-dialog title="聊天" :visible.sync="chatDialogVisible" width="50%" center>
-        <el-container>
+        <el-container v-if="user_id!=0">
           <el-aside width="200px">
             <div v-for="(userid,index) in chat_userid_list" :key="index">
               <el-button
@@ -442,11 +442,10 @@
               <hr>
             </div>
           </el-aside>
-          <el-container>
-            <el-main>
-              <template>
+
+
                 <div v-if="cur_chat_id!=0">
-                  <div v-for="(obj) in chat_history[cur_chat_id]" :key="obj.key">
+                  <div v-for="(obj,index) in chat_history[cur_chat_id]" :key="index">
                     <div v-if="obj[0]">发送：{{obj[1]}}</div>
                     <div v-else>接收：{{obj[1]}}</div>
                   </div>
@@ -459,10 +458,9 @@
                     </el-col>
                   </el-row>
                 </div>
-              </template>
-            </el-main>
-          </el-container>
-        </el-container>
+
+
+        </el-container><div v-else>请先登录！</div>
       </el-dialog>
     </el-container>
   </div>
@@ -781,7 +779,7 @@ export default {
       this.notification("连接发生错误", "错误", "error");
     },
     ws_onmessage(e) {
-      this.notification(e.data, "收到消息");
+    //  this.notification(e.data, "收到消息");
       var result = JSON.parse(e.data);
       if (result.type == 1) {
         if (result.code == 1) {
@@ -843,13 +841,23 @@ export default {
             false,
             result.content
           ]);
+                    tmp=this.cur_chat_id
+          this.cur_chat_id=0
+          this.cur_chat_id=tmp
           //this.chat_history[sender_id][result.msg_seq]=[false,result.content]
-        } else if (result.code == 12) {
+        }else if(result.code==11){
+          this.$set(this.chat_history[result.recver_id],result.msg_seq,[true,result.content]);
+        //  this.chat_history[result.recver_id][result.msg_seq]=[true,result.content];
+          tmp=this.cur_chat_id
+          this.cur_chat_id=0
+          this.cur_chat_id=tmp
+        } 
+        else if (result.code == 12) {
           var arr = result.messages;
           for (i = 0; i < arr.length; ++i) {
             tmp = [];
             var msg_seq = arr[i][0];
-            tmp[0] = arr[i][1] == 1 ? true : false;
+            tmp[0] = arr[i][1] == 0 ? true : false;
             var target_id = arr[i][2];
             tmp[1] = arr[i][3];
             if (!this.chat_history.hasOwnProperty(target_id)) {
@@ -1086,7 +1094,7 @@ export default {
         this.initWS();
       }
       this.ws.send(JSON.stringify(request, null, 0));
-      this.notification(JSON.stringify(request, null, 0), "发送消息");
+     // this.notification(JSON.stringify(request, null, 0), "发送消息");
     },
     get_item_info(item_id) {
       this.$set(this.item, item_id, {});
@@ -1215,11 +1223,6 @@ export default {
         this.chat_userid_list.push(user_id);
       }
       this.chatDialogVisible = true;
-    },
-    apply_status_converter() {
-      //switch(this.application[this.cur_my_application_id].status){
-      //   case
-      // }
     }
   }
 };
