@@ -47,9 +47,15 @@
         </div>
 
         <el-button class="search" type="text" icon="el-icon-message" @click="chat_dialog_open()"></el-button>
-        <div class="search">
-          <i class="el-icon-search"></i>
-        </div>
+        <el-popover placement="bottom" width="400" trigger="click" class="search">
+          <div slot="reference">
+            <i class="el-icon-search"></i>
+          </div>
+          <el-input placeholder="请输入内容" v-model="search_input">
+            <el-button slot="append" icon="el-icon-search" v-if="!searching" @click="search()"></el-button>
+            <el-button slot="append" icon="el-icon-close" v-else @click="search_cancel()"></el-button>
+          </el-input>
+        </el-popover>
         <div class="search" v-if="ws!=null">
           <el-tooltip
             class="item"
@@ -84,7 +90,7 @@
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col> -->
+          </el-col>-->
           <el-col :span="16" :offset="4">
             <div class="list">
               <ul>
@@ -134,7 +140,7 @@
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col> -->
+          </el-col>-->
           <el-col :offset="4" :span="16">
             <div class="list">
               <ul>
@@ -178,7 +184,7 @@
             <div class="nav">
               <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
             </div>
-          </el-col> -->
+          </el-col>-->
           <el-col :offset="4" :span="16">
             <div class="list">
               <ul>
@@ -423,11 +429,28 @@
         >
           <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
           <div>用户名: {{userinfo[cur_userinfo_id].username}}</div>
-          <div>Email: {{userinfo[cur_userinfo_id].email}}</div>
-          <div>电话: {{userinfo[cur_userinfo_id].phone}}</div>
-          <div>描述: {{userinfo[cur_userinfo_id].description}}</div>
-          <el-button v-if="cur_userinfo_id==user_id" type="primary" @click="modify_userinfo()">修改</el-button>
-          <el-button @click="userinfoDialogVisible=false">关闭</el-button>
+          <div v-if="!modifying">
+            <div>Email: {{userinfo[cur_userinfo_id].email}}</div>
+            <div>电话: {{userinfo[cur_userinfo_id].phone}}</div>
+            <div>描述: {{userinfo[cur_userinfo_id].description}}</div>
+            <el-button v-if="cur_userinfo_id==user_id" type="primary" @click="modify_userinfo()">修改</el-button>
+            <el-button @click="userinfoDialogVisible=false;modifying=false">关闭</el-button>
+          </div>
+          <div v-else>
+            <el-form ref="form" :model="userinfo_form" label-width="80px">
+              <el-form-item label="Email">
+                <el-input v-model="userinfo_form.email"></el-input>
+              </el-form-item>
+              <el-form-item label="电话">
+                <el-input v-model="userinfo_form.phone"></el-input>
+              </el-form-item>
+              <el-form-item label="描述">
+                <el-input v-model="userinfo_form.description"></el-input>
+              </el-form-item>
+            </el-form>
+            <el-button type="primary" @click="modify_userinfo_submit()">提交</el-button>
+            <el-button @click="userinfoDialogVisible=false;modifying=false">关闭</el-button>
+          </div>
         </div>
       </el-dialog>
 
@@ -443,24 +466,26 @@
             </div>
           </el-aside>
 
-
-                <div v-if="cur_chat_id!=0">
-                  <div v-for="(obj,index) in chat_history[cur_chat_id]" :key="index">
-                    <div v-if="obj[0]">发送：{{obj[1]}}</div>
-                    <div v-else>接收：{{obj[1]}}</div>
-                  </div>
-                  <el-row :gutter="20" style="width:70%">
-                    <el-col :span="22">
-                      <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
-                    </el-col>
-                    <el-col :span="1">
-                      <el-button type="txt" @click="send()">发送</el-button>
-                    </el-col>
-                  </el-row>
+          <el-main>
+            <div v-if="cur_chat_id!=0">
+              <el-row style="height:300px;overflow-y:scroll">
+                <div v-for="(obj,index) in chat_history[cur_chat_id]" :key="index">
+                  <div v-if="obj[0]">发送：{{obj[1]}}</div>
+                  <div v-else>接收：{{obj[1]}}</div>
                 </div>
-
-
-        </el-container><div v-else>请先登录！</div>
+              </el-row>
+              <el-row :gutter="20" style="width:70%;padding-top:20px">
+                <el-col :span="22">
+                  <el-input v-model="msg_input" placeholder="请输入内容"></el-input>
+                </el-col>
+                <el-col :span="1">
+                  <el-button type="txt" @click="send()">发送</el-button>
+                </el-col>
+              </el-row>
+            </div>
+          </el-main>
+        </el-container>
+        <div v-else>请先登录！</div>
       </el-dialog>
     </el-container>
   </div>
@@ -601,58 +626,6 @@ tr {
 export default {
   data() {
     return {
-      data: [
-        {
-          label: "类别",
-          children: [
-            {
-              label: "手机"
-            }
-          ]
-        },
-        {
-          label: "地点",
-          children: [
-            {
-              label: "学校",
-              children: [
-                {
-                  label: "华理"
-                },
-                {
-                  label: "其他"
-                }
-              ]
-            },
-            {
-              label: "地铁",
-              children: [
-                {
-                  label: "1 号线"
-                },
-                {
-                  label: "2 号线"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          label: "时间",
-          children: [
-            {
-              label: "一周内"
-            },
-            {
-              label: "一月内"
-            }
-          ]
-        }
-      ],
-      defaultProps: {
-        children: "children",
-        label: "label"
-      },
       notice: {
         0: {
           finder_id: 0,
@@ -690,6 +663,7 @@ export default {
       },
       chat_history: {}, //msg_seq:[send/recv, content]
       notice_list: [], //notice_id
+      notice_list_bak: [],
       my_notice_list: [],
       my_application_list: [],
       chat_userid_list: [],
@@ -719,7 +693,15 @@ export default {
         password: "",
         password1: ""
       },
+      userinfo_form: {
+        email: "",
+        phone: "",
+        description: ""
+      },
       msg_input: "",
+      search_input: "",
+      searching: false,
+      modifying: false,
       activeIndex: "1",
       cur_notice_id: 0,
       cur_my_notice_id: 0,
@@ -779,7 +761,7 @@ export default {
       this.notification("连接发生错误", "错误", "error");
     },
     ws_onmessage(e) {
-    //  this.notification(e.data, "收到消息");
+      //  this.notification(e.data, "收到消息");
       var result = JSON.parse(e.data);
       if (result.type == 1) {
         if (result.code == 1) {
@@ -833,6 +815,14 @@ export default {
           tmp["phone"] = result.phone;
           tmp["description"] = result.description;
           this.userinfo[id] = tmp;
+        } else if (result.code == 12) {
+          this.modifying = false;
+
+          this.$message({
+            message: "修改成功",
+            type: "success"
+          });
+          this.get_user_info(this.user_id);
         }
       } else if (result.type == 5) {
         if (result.code == 0) {
@@ -841,18 +831,20 @@ export default {
             false,
             result.content
           ]);
-                    tmp=this.cur_chat_id
-          this.cur_chat_id=0
-          this.cur_chat_id=tmp
+          tmp = this.cur_chat_id;
+          this.cur_chat_id = 0;
+          this.cur_chat_id = tmp;
           //this.chat_history[sender_id][result.msg_seq]=[false,result.content]
-        }else if(result.code==11){
-          this.$set(this.chat_history[result.recver_id],result.msg_seq,[true,result.content]);
-        //  this.chat_history[result.recver_id][result.msg_seq]=[true,result.content];
-          tmp=this.cur_chat_id
-          this.cur_chat_id=0
-          this.cur_chat_id=tmp
-        } 
-        else if (result.code == 12) {
+        } else if (result.code == 11) {
+          this.$set(this.chat_history[result.recver_id], result.msg_seq, [
+            true,
+            result.content
+          ]);
+          //  this.chat_history[result.recver_id][result.msg_seq]=[true,result.content];
+          tmp = this.cur_chat_id;
+          this.cur_chat_id = 0;
+          this.cur_chat_id = tmp;
+        } else if (result.code == 12) {
           var arr = result.messages;
           for (i = 0; i < arr.length; ++i) {
             tmp = [];
@@ -945,6 +937,25 @@ export default {
           });
           this.my_applicationDialogVisible = false;
           this.application[app_seq].status = 3;
+        } else if (result.code == 18) {
+          var info = result.notice_info;
+          var tmp_notice_list = [];
+          for (i = 0; i < info.length; ++i) {
+            obj = info[i];
+            tmp = {};
+            notice_id = obj[0];
+            tmp["finder_id"] = obj[1];
+            tmp["status"] = obj[2];
+            tmp["item_id"] = obj[3];
+            tmp["contact_id"] = obj[4];
+            tmp["time"] = obj[5];
+            this.$set(this.notice, notice_id, tmp);
+            tmp_notice_list.push(notice_id);
+          }
+          this.notice_list_bak = this.notice_list;
+          this.notice_list = tmp_notice_list;
+          this.activeIndex = "1";
+          this.searching = true;
         } else if (result.code == 19) {
           obj1 = result.notice_info;
           tmp1 = {};
@@ -1094,7 +1105,7 @@ export default {
         this.initWS();
       }
       this.ws.send(JSON.stringify(request, null, 0));
-     // this.notification(JSON.stringify(request, null, 0), "发送消息");
+      // this.notification(JSON.stringify(request, null, 0), "发送消息");
     },
     get_item_info(item_id) {
       this.$set(this.item, item_id, {});
@@ -1169,28 +1180,45 @@ export default {
       };
       this.send_msg(request);
     },
-    modify_userinfo() {},
-    application_accept(index) {
+    modify_userinfo() {
+      this.userinfo_form.email = this.userinfo[this.user_id].email;
+      this.userinfo_form.phone = this.userinfo[this.user_id].phone;
+      this.userinfo_form.description = this.userinfo[this.user_id].description;
+      this.modifying = true;
+    },
+    modify_userinfo_submit() {
       var request = {
-        type: 11,
-        code: 5,
-        application_seq: this.notice_application_list[this.cur_my_notice_id][
-          index
-        ],
-        status: 1
+        type: 4,
+        code: 2,
+        user_id: this.user_id,
+        email: this.userinfo_form.email,
+        phone: this.userinfo_form.phone,
+        description: this.userinfo_form.description
       };
       this.send_msg(request);
     },
-    application_refuse(index) {
+    application_accept(index) {
+      var app_seq = this.notice_application_list[this.cur_my_notice_id][index];
       var request = {
         type: 11,
         code: 5,
-        application_seq: this.notice_application_list[this.cur_my_notice_id][
-          index
-        ],
+        application_seq: app_seq,
+        status: 1
+      };
+      this.send_msg(request);
+      this.$set(this.application[app_seq], "status", 1);
+      this.$set(this.notice[this.cur_my_notice_id], "status", 1);
+    },
+    application_refuse(index) {
+      var app_seq = this.notice_application_list[this.cur_my_notice_id][index];
+      var request = {
+        type: 11,
+        code: 5,
+        application_seq: app_seq,
         status: 2
       };
       this.send_msg(request);
+      this.$set(this.application[app_seq], "status", 2);
     },
     view_person(index) {
       this.cur_userinfo_id = this.application[
@@ -1223,6 +1251,18 @@ export default {
         this.chat_userid_list.push(user_id);
       }
       this.chatDialogVisible = true;
+    },
+    search() {
+      var request = {
+        type: 11,
+        code: 8,
+        keyword: this.search_input
+      };
+      this.send_msg(request);
+    },
+    search_cancel() {
+      this.notice_list = this.notice_list_bak;
+      this.searching = false;
     }
   }
 };
