@@ -96,7 +96,7 @@
               <ul>
                 <div v-if="notice_list.length">
                   <el-container
-                    v-for="(notice_id,index) in notice_list"
+                    v-for="(notice_id,index) in rev_notice_list"
                     :key="notice_id"
                     class="listitem"
                   >
@@ -127,7 +127,8 @@
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateNoticeList">更新列表</el-button>
+                  暂时还没有哦~
+                  <el-button @click="updateNoticeList"  type="text">点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -146,7 +147,7 @@
               <ul>
                 <div v-if="my_notice_list.length">
                   <el-container
-                    v-for="(notice_id,index) in my_notice_list"
+                    v-for="(notice_id,index) in rev_my_notice_list"
                     :key="notice_id"
                     class="listitem"
                   >
@@ -171,7 +172,8 @@
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateMyNoticeList">更新列表</el-button>
+                  暂时还没有哦~
+                  <el-button @click="updateMyNoticeList"  type="text">点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -190,7 +192,7 @@
               <ul>
                 <div v-if="my_application_list.length">
                   <el-container
-                    v-for="(app_seq,index) in my_application_list"
+                    v-for="(app_seq,index) in rev_my_application_list"
                     :key="app_seq"
                     class="listitem"
                   >
@@ -220,7 +222,8 @@
                   </el-container>
                 </div>
                 <div v-else>
-                  <el-button @click="updateApplicationList">更新列表</el-button>
+                  暂时还没有哦~
+                  <el-button @click="updateApplicationList"  type="text"> 点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -233,7 +236,7 @@
             <el-input v-model="login_form.username"></el-input>
           </el-form-item>
           <el-form-item label="密码">
-            <el-input v-model="login_form.password"></el-input>
+            <el-input type="password" v-model="login_form.password"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="login">登陆</el-button>
@@ -264,7 +267,9 @@
           </el-form-item>
         </el-form>
       </el-dialog>
+
       <el-dialog title="添加公告" :visible.sync="addnoticeDialogVisible" width="30%" center>
+        <div v-if="user_id!=0">
         <el-form ref="form" :model="add_notice_form" label-width="80px">
           <el-form-item label="物品名称">
             <el-input v-model="add_notice_form.item_name"></el-input>
@@ -277,7 +282,8 @@
           </el-form-item>
           <el-button type="primary" @click="add_notice">提交</el-button>
           <el-button @click="addnoticeDialogVisible=false">取消</el-button>
-        </el-form>
+        </el-form></div>
+        <div v-else ><div style="padding:35px"> 请先登录！</div></div>
       </el-dialog>
 
       <el-dialog title="公告信息" :visible.sync="noticeDialogVisible" width="30%" center>
@@ -465,7 +471,6 @@
               <hr>
             </div>
           </el-aside>
-
           <el-main>
             <div v-if="cur_chat_id!=0">
               <el-row style="height:300px;overflow-y:scroll">
@@ -485,7 +490,7 @@
             </div>
           </el-main>
         </el-container>
-        <div v-else>请先登录！</div>
+        <div v-else ><div style="padding:35px"> 请先登录！</div></div>
       </el-dialog>
     </el-container>
   </div>
@@ -753,7 +758,7 @@ export default {
       this.ws_onclose();
     },
     ws_onopen() {
-      this.notification("连接已建立", "成功", "success");
+      //this.notification("连接已建立", "成功", "success");
       this.ws_state = this.ws.readyState;
       this.updateNoticeList();
     },
@@ -865,7 +870,15 @@ export default {
             }
           }
         }
-      } else if (result.type == 11) {
+      }else if(result.type==9){
+        if(result.code==3){
+            this.$message({
+            message: "已发起过申请",
+            type: "warning"
+          });
+        }
+      }
+       else if (result.type == 11) {
         if (result.code == 11) {
           this.addnoticeDialogVisible = false;
           this.$message({
@@ -920,7 +933,7 @@ export default {
             message: "操作成功",
             type: "success"
           });
-          this.my_noticeDialogVisible = false;
+          //this.my_noticeDialogVisible = false;
         } else if (result.code == 16) {
           notice_id = result.notice_id;
           this.$message({
@@ -1006,13 +1019,19 @@ export default {
       }
     },
     ws_onclose() {
-      this.notification("连接关闭", "错误", "error");
+      //this.notification("连接关闭", "错误", "error");
       this.ws_state = this.ws.readyState;
+      this.initWS();
+      this.user_id = 0;
+      this.my_notice_list = [];
+      this.my_application_list = [];
+      this.activeIndex=1;
     },
     login() {
       var content = JSON.stringify(this.login_form, null, 0);
       this.ws.send(content);
-      this.notification(content, "发送消息");
+      //this.notification(content, "发送消息");
+      this.login_form.password="";
     },
     updateNoticeList() {
       var request = { type: 11, code: 2 };
@@ -1099,6 +1118,7 @@ export default {
         lost_location: this.add_notice_form.lost_location
       };
       this.send_msg(request);
+      this.updateNoticeList();
     },
     send_msg(request) {
       if (this.ws.readyState == WebSocket.CLOSED) {
@@ -1171,6 +1191,7 @@ export default {
         message: "已注销",
         type: "success"
       });
+      this.activeIndex=1;
     },
     register() {
       var request = {
@@ -1208,6 +1229,9 @@ export default {
       this.send_msg(request);
       this.$set(this.application[app_seq], "status", 1);
       this.$set(this.notice[this.cur_my_notice_id], "status", 1);
+      for(var i=0;i<this.notice_application_list[this.cur_my_notice_id].length;++i){
+        this.get_application_info(this.notice_application_list[this.cur_my_notice_id][i]);
+      }
     },
     application_refuse(index) {
       var app_seq = this.notice_application_list[this.cur_my_notice_id][index];
@@ -1264,6 +1288,18 @@ export default {
       this.notice_list = this.notice_list_bak;
       this.searching = false;
     }
+  },
+  computed:{
+    rev_notice_list(){
+      return this.notice_list.reverse();
+    },
+    rev_my_notice_list(){
+      return this.my_notice_list.reverse();
+    },
+    rev_my_application_list(){
+      return this.my_application_list.reverse();
+    },
+    
   }
 };
 </script>
