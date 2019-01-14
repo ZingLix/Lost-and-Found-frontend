@@ -42,7 +42,7 @@
                 </el-row>
               </div>
             </div>
-            <img src="./img/avatar.png" class="avatar" slot="reference">
+            <img src="./img/a.png" class="avatar" slot="reference">
           </el-popover>
         </div>
 
@@ -585,7 +585,7 @@ body {
 }
 .container .main .list .img {
   height: 120px;
-  padding-top: 5px;
+  padding-top: 20px;
 }
 .container .main .list .description {
   color: #2c3e50;
@@ -755,6 +755,7 @@ export default {
     ws_onopen() {
       //this.notification("连接已建立", "成功", "success");
       this.ws_state = this.ws.readyState;
+      this.retryCount = 0;
       this.updateNoticeList();
       this.retryCount = 0;
     },
@@ -766,7 +767,7 @@ export default {
       var result = JSON.parse(e.data);
       if (result.type == 1) {
         if (result.code == 1) {
-          this.notification("登陆成功: user_id " + result.user_id);
+          // this.notification("登陆成功: user_id " + result.user_id);
           this.loginDialogVisible = false;
           this.user_id = result.user_id;
           this.$message({
