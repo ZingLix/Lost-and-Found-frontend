@@ -42,7 +42,7 @@
                 </el-row>
               </div>
             </div>
-            <img src="./img/avatar.png" class="avatar" slot="reference">
+            <img src="./img/a.png" class="avatar" slot="reference">
           </el-popover>
         </div>
 
@@ -593,6 +593,7 @@ body {
 }
 .container .main .list .img {
   height: 120px;
+  padding-top: 20px;
 }
 .container .main .list .description {
   color: #2c3e50;
@@ -712,7 +713,8 @@ export default {
       cur_my_notice_id: 0,
       cur_my_application_id: 0,
       cur_userinfo_id: 0,
-      cur_chat_id: 0
+      cur_chat_id: 0,
+      retryCount:0
     };
   },
   created() {
@@ -760,6 +762,7 @@ export default {
     ws_onopen() {
       //this.notification("连接已建立", "成功", "success");
       this.ws_state = this.ws.readyState;
+      this.retryCount=0;
       this.updateNoticeList();
     },
     ws_onerror() {
@@ -770,7 +773,7 @@ export default {
       var result = JSON.parse(e.data);
       if (result.type == 1) {
         if (result.code == 1) {
-          this.notification("登陆成功: user_id " + result.user_id);
+         // this.notification("登陆成功: user_id " + result.user_id);
           this.loginDialogVisible = false;
           this.user_id = result.user_id;
           this.$message({
@@ -1021,11 +1024,13 @@ export default {
     ws_onclose() {
       //this.notification("连接关闭", "错误", "error");
       this.ws_state = this.ws.readyState;
-      this.initWS();
+      if(this.retryCount>3){
+      this.initWS();}
       this.user_id = 0;
       this.my_notice_list = [];
       this.my_application_list = [];
       this.activeIndex=1;
+      this.retryCount++;
     },
     login() {
       var content = JSON.stringify(this.login_form, null, 0);
