@@ -86,11 +86,6 @@
 
       <el-main class="main" v-if="activeIndex==1">
         <el-row>
-          <!-- <el-col :span="6">
-            <div class="nav">
-              <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
-            </div>
-          </el-col>-->
           <el-col :span="16" :offset="4">
             <div class="list">
               <ul>
@@ -101,7 +96,7 @@
                     class="listitem"
                   >
                     <el-aside width="150px">
-                      <img class="img" src="./img/avatar.png">
+                      <img class="img" src="./img/img-ph.png">
                     </el-aside>
                     <el-container
                       v-loading="(notice[notice_id]=={})||(item[notice[notice_id].item_id]=={})"
@@ -126,9 +121,8 @@
                     </el-container>
                   </el-container>
                 </div>
-                <div v-else>
-                  暂时还没有哦~
-                  <el-button @click="updateNoticeList"  type="text">点击更新列表</el-button>
+                <div v-else>暂时还没有哦~
+                  <el-button @click="updateNoticeList" type="text">点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -137,11 +131,6 @@
       </el-main>
       <el-main v-else-if="activeIndex==2" class="main">
         <el-row>
-          <!-- <el-col :span="6">
-            <div class="nav">
-              <el-tree :data="data" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
-            </div>
-          </el-col>-->
           <el-col :offset="4" :span="16">
             <div class="list">
               <ul>
@@ -152,7 +141,7 @@
                     class="listitem"
                   >
                     <el-aside width="150px">
-                      <img class="img" src="./img/avatar.png">
+                      <img class="img" src="./img/img-ph.png">
                     </el-aside>
                     <el-container>
                       <el-header>
@@ -171,9 +160,8 @@
                     </el-container>
                   </el-container>
                 </div>
-                <div v-else>
-                  暂时还没有哦~
-                  <el-button @click="updateMyNoticeList"  type="text">点击更新列表</el-button>
+                <div v-else>暂时还没有哦~
+                  <el-button @click="updateMyNoticeList" type="text">点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -197,7 +185,7 @@
                     class="listitem"
                   >
                     <el-aside width="150px">
-                      <img class="img" src="./img/avatar.png">
+                      <img class="img" src="./img/img-ph.png">
                     </el-aside>
                     <el-container
                       v-loading="(notice[application[app_seq].notice_id]=={})||(item[notice[application[app_seq].notice_id].item_id]=={})"
@@ -221,9 +209,8 @@
                     </el-container>
                   </el-container>
                 </div>
-                <div v-else>
-                  暂时还没有哦~
-                  <el-button @click="updateApplicationList"  type="text"> 点击更新列表</el-button>
+                <div v-else>暂时还没有哦~
+                  <el-button @click="updateApplicationList" type="text">点击更新列表</el-button>
                 </div>
               </ul>
             </div>
@@ -270,20 +257,23 @@
 
       <el-dialog title="添加公告" :visible.sync="addnoticeDialogVisible" width="30%" center>
         <div v-if="user_id!=0">
-        <el-form ref="form" :model="add_notice_form" label-width="80px">
-          <el-form-item label="物品名称">
-            <el-input v-model="add_notice_form.item_name"></el-input>
-          </el-form-item>
-          <el-form-item label="物品描述">
-            <el-input v-model="add_notice_form.item_info"></el-input>
-          </el-form-item>
-          <el-form-item label="丢失位置">
-            <el-input v-model="add_notice_form.lost_location"></el-input>
-          </el-form-item>
-          <el-button type="primary" @click="add_notice">提交</el-button>
-          <el-button @click="addnoticeDialogVisible=false">取消</el-button>
-        </el-form></div>
-        <div v-else ><div style="padding:35px"> 请先登录！</div></div>
+          <el-form ref="form" :model="add_notice_form" label-width="80px">
+            <el-form-item label="物品名称">
+              <el-input v-model="add_notice_form.item_name"></el-input>
+            </el-form-item>
+            <el-form-item label="物品描述">
+              <el-input v-model="add_notice_form.item_info"></el-input>
+            </el-form-item>
+            <el-form-item label="丢失位置">
+              <el-input v-model="add_notice_form.lost_location"></el-input>
+            </el-form-item>
+            <el-button type="primary" @click="add_notice">提交</el-button>
+            <el-button @click="addnoticeDialogVisible=false">取消</el-button>
+          </el-form>
+        </div>
+        <div v-else>
+          <div style="padding:35px">请先登录！</div>
+        </div>
       </el-dialog>
 
       <el-dialog title="公告信息" :visible.sync="noticeDialogVisible" width="30%" center>
@@ -291,7 +281,7 @@
           v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
           element-loading-text="获取公告信息中..."
         >
-          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <img class="img" style="width:100px;height:100px" src="./img/img-ph.png">
           <div>物品名称：{{item[notice[cur_notice_id].item_id].item_name}}</div>
           <div>物品描述：{{item[notice[cur_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_notice_id].item_id].lost_location}}</div>
@@ -306,7 +296,7 @@
           v-loading="!item.hasOwnProperty(notice[cur_my_notice_id].item_id)"
           element-loading-text="获取申请信息中..."
         >
-          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <img class="img" style="width:100px;height:100px" src="./img/img-ph.png">
           <div>物品名称：{{item[notice[cur_my_notice_id].item_id].item_name}}</div>
           <div>物品描述：{{item[notice[cur_my_notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[cur_my_notice_id].item_id].lost_location}}</div>
@@ -412,7 +402,7 @@
             ></el-step>
             <el-step title="完成申请" v-else-if="application[cur_my_application_id].status==0"></el-step>
           </el-steps>
-          <img class="img" style="width:100px;height:100px" src="./img/avatar.png">
+          <img class="img" style="width:100px;height:100px" src="./img/img-ph.png">
           <div>物品名称：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_name}}</div>
           <div>物品描述：{{item[notice[application[cur_my_application_id].notice_id].item_id].item_info}}</div>
           <div>丢失位置：{{item[notice[application[cur_my_application_id].notice_id].item_id].lost_location}}</div>
@@ -490,7 +480,9 @@
             </div>
           </el-main>
         </el-container>
-        <div v-else ><div style="padding:35px"> 请先登录！</div></div>
+        <div v-else>
+          <div style="padding:35px">请先登录！</div>
+        </div>
       </el-dialog>
     </el-container>
   </div>
@@ -553,7 +545,7 @@ body {
   color: #fff;
   height: 40px;
   width: 40px;
-  border-radius: 20px;
+  border-radius: 23px;
   margin: 10px 0 10px 10px;
 }
 
@@ -593,6 +585,7 @@ body {
 }
 .container .main .list .img {
   height: 120px;
+  padding-top: 5px;
 }
 .container .main .list .description {
   color: #2c3e50;
@@ -712,7 +705,8 @@ export default {
       cur_my_notice_id: 0,
       cur_my_application_id: 0,
       cur_userinfo_id: 0,
-      cur_chat_id: 0
+      cur_chat_id: 0,
+      retryCount: 0
     };
   },
   created() {
@@ -741,7 +735,8 @@ export default {
         title: title,
         message: msg,
         type: type,
-        offset: 100
+        offset: 100,
+        duration: 3000
       });
     },
     initWS() {
@@ -761,6 +756,7 @@ export default {
       //this.notification("连接已建立", "成功", "success");
       this.ws_state = this.ws.readyState;
       this.updateNoticeList();
+      this.retryCount = 0;
     },
     ws_onerror() {
       this.notification("连接发生错误", "错误", "error");
@@ -870,15 +866,14 @@ export default {
             }
           }
         }
-      }else if(result.type==9){
-        if(result.code==3){
-            this.$message({
+      } else if (result.type == 9) {
+        if (result.code == 3) {
+          this.$message({
             message: "已发起过申请",
             type: "warning"
           });
         }
-      }
-       else if (result.type == 11) {
+      } else if (result.type == 11) {
         if (result.code == 11) {
           this.addnoticeDialogVisible = false;
           this.$message({
@@ -1021,17 +1016,20 @@ export default {
     ws_onclose() {
       //this.notification("连接关闭", "错误", "error");
       this.ws_state = this.ws.readyState;
-      this.initWS();
+      if (this.retryCount < 3) {
+        this.retryCount++;
+        this.initWS();
+      }
       this.user_id = 0;
       this.my_notice_list = [];
       this.my_application_list = [];
-      this.activeIndex=1;
+      this.activeIndex = 1;
     },
     login() {
       var content = JSON.stringify(this.login_form, null, 0);
       this.ws.send(content);
       //this.notification(content, "发送消息");
-      this.login_form.password="";
+      this.login_form.password = "";
     },
     updateNoticeList() {
       var request = { type: 11, code: 2 };
@@ -1191,7 +1189,7 @@ export default {
         message: "已注销",
         type: "success"
       });
-      this.activeIndex=1;
+      this.activeIndex = 1;
     },
     register() {
       var request = {
@@ -1229,8 +1227,14 @@ export default {
       this.send_msg(request);
       this.$set(this.application[app_seq], "status", 1);
       this.$set(this.notice[this.cur_my_notice_id], "status", 1);
-      for(var i=0;i<this.notice_application_list[this.cur_my_notice_id].length;++i){
-        this.get_application_info(this.notice_application_list[this.cur_my_notice_id][i]);
+      for (
+        var i = 0;
+        i < this.notice_application_list[this.cur_my_notice_id].length;
+        ++i
+      ) {
+        this.get_application_info(
+          this.notice_application_list[this.cur_my_notice_id][i]
+        );
       }
     },
     application_refuse(index) {
@@ -1289,17 +1293,16 @@ export default {
       this.searching = false;
     }
   },
-  computed:{
-    rev_notice_list(){
+  computed: {
+    rev_notice_list() {
       return this.notice_list.reverse();
     },
-    rev_my_notice_list(){
+    rev_my_notice_list() {
       return this.my_notice_list.reverse();
     },
-    rev_my_application_list(){
+    rev_my_application_list() {
       return this.my_application_list.reverse();
-    },
-    
+    }
   }
 };
 </script>
